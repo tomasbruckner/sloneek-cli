@@ -1,0 +1,51 @@
+{
+  "name": "sloneek-cli",
+  "version": "1.3.0",
+  "description": "Sloneek CLI for creating your worklogs 100x faster.",
+  "main": "index.js",
+  "author": "Tomas Bruckner",
+  "license": "MIT",
+  "keywords": [
+    "cli",
+    "sloneek",
+    "typescript"
+  ],
+  "bin": {
+    "sloneek": "./dist/bin/cli.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "build": "tsc"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@commander-js/extra-typings": "^14.0.0",
+    "@types/node": "^22.15.24",
+    "@types/terminal-kit": "^2.5.7",
+    "axios": "^1.9.0",
+    "commander": "^14.0.0",
+    "luxon": "^3.6.1",
+    "terminal-kit": "^3.1.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.6.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomasbruckner/sloneek-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tomasbruckner/sloneek-cli/issues"
+  },
+  "homepage": "https://github.com/tomasbruckner/sloneek-cli",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
