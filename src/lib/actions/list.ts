@@ -176,7 +176,6 @@ async function showCurrentUser(config: Config, accessToken: string) {
 
 async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
   const { isoStart, isoEnd } = getCurrentDay();
-  console.log(isoStart, isoEnd)
 
   const allEvents =
     (
@@ -191,16 +190,18 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
     ).data.events ?? [];
 
   if (allEvents.length === 0) {
-    console.log("No events found.");
+    console.log("No absences found.");
     return;
   }
 
   console.log(
-    "Who                    | Team                 | Date           | Time        | Type                   |"
+    "Who                    | Team                       | Date           | Time        | Type                   |"
   );
   console.log(
-    "-----------------------|----------------------|----------------|-------------|------------------------|"
+    "-----------------------|----------------------------|----------------|-------------|------------------------|"
   );
+
+  const date = DateTime.fromISO(isoStart).toFormat("dd.MM.yyyy ccc")
 
   allEvents
     .filter((x) => x.user.team.name.includes(teamPrefix))
@@ -210,15 +211,14 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
       );
       const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
 
-      const date = startTime.toFormat("dd.MM.yyyy ccc");
       const timeRange = `${startTime.toFormat("HH:mm")}-${endTime.toFormat(
         "HH:mm"
       )}`;
 
       console.log(
-        `${event.user.full_name.padEnd(22)} | ${event.user.team.name.padEnd(20)} | ${date} | ${timeRange.padEnd(
+        `${event.user.full_name.padEnd(22)} | ${event.user.team.name.padEnd(26)} | ${date} | ${timeRange.padEnd(
           11
-        )} |  ${event.user_absence_event.absence_event_name.padEnd(18)}`
+        )} | ${event.user_absence_event.absence_event_name.padEnd(18)}`
       );
     });
 }

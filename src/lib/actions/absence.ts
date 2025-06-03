@@ -1,6 +1,6 @@
 import { fetchAbsenceOptions, fetchCreateAbsence, login } from "../utils/api";
 import { terminal as term } from "terminal-kit";
-import { convertDayToISO } from "../utils/time";
+import { convertDayAndTimeToIso, convertDayToISO } from "../utils/time";
 
 export async function createAbsenceAction(config: Config) {
   const loginInfo = await login(
@@ -55,7 +55,7 @@ async function chooseFullDayAbsence(
   ]).promise;
   term("\n");
 
-  term("Start day (example 16.6.2025): ");
+  term("Start day (example 16.5.2025): ");
   const from = (await term.inputField().promise) ?? "";
   term("\n");
 
@@ -74,7 +74,7 @@ async function chooseFullDayAbsence(
     return;
   }
 
-  term("End day (example 16.6.2025): ");
+  term("End day (example 16.5.2025): ");
   const to = (await term.inputField().promise) ?? "";
   term("\n");
 
@@ -113,7 +113,7 @@ async function chooseHalfDayAbsence(
     "Second half of the day (after lunch)",
   ]).promise;
 
-  term("Start day (example 16.6.2025): ");
+  term("Start day (example 16.5.2025): ");
   const from = (await term.inputField().promise) ?? "";
   term("\n");
 
@@ -136,9 +136,14 @@ async function chooseHoursAbsence(
   message: string,
   option: AbsenceOption
 ) {
-  term("Start day (example 16.6.2025): ");
+  term("Start day (example 16.5.2025): ");
   const from = (await term.inputField().promise) ?? "";
   term("\n");
+
+  term("Start time (example 12:30): ");
+  const time = (await term.inputField().promise) ?? "";
+  term("\n");
+
   term("Duration in hours: ");
   const duration = (await term.inputField().promise) ?? "";
   term("\n");
@@ -151,7 +156,7 @@ async function chooseHoursAbsence(
     note: message,
     duration: Number(duration),
     user_absence_event_uuid: option.uuid,
-    start_date_time: convertDayToISO(from),
+    start_date_time: convertDayAndTimeToIso(from, time),
     end_date_time: null,
   });
 }

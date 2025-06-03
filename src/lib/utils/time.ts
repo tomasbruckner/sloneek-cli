@@ -105,6 +105,30 @@ export function convertDayToISO(dateString: string, addDays?: number): string {
   return iso;
 }
 
+export function convertDayAndTimeToIso(dateString: string, time: string): string {
+  const [day, month, year] = dateString.trim().split(".");
+  const [hour, minutes] = time.trim().split(':')
+
+  let pragueDateTime = DateTime.fromObject(
+    {
+      year: parseInt(year),
+      month: parseInt(month),
+      day: parseInt(day),
+      hour: parseInt(hour),
+      minute: parseInt(minutes),
+    },
+    { zone: timezone }
+  );
+
+
+  const iso = pragueDateTime.toISO({ suppressMilliseconds: true });
+  if (!iso) {
+    throw new Error("Invalid date " + dateString);
+  }
+
+  return iso;
+}
+
 export function getCurrentMonth() {
   const now = DateTime.now().setZone(timezone);
   const startOfMonth = now.startOf("month");
