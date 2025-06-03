@@ -99,7 +99,7 @@ export async function createLogAction(
     }
   );
 
-  console.log("✓ Event created successfully!");
+  term.green("✓ Event created successfully!");
 }
 
 async function interactiveClientProjectSelection(

@@ -126,9 +126,6 @@ async function showCurrentUser(config: Config, accessToken: string) {
   }
 
   console.log(
-    `\nFound ${allEvents.length} events (${scheduledEvents.length} work, ${expandedAbsenceEvents.length} absence):\n`
-  );
-  console.log(
     "Date           | Time        | Type     | Client/Absence            | Project/Details"
   );
   console.log(
@@ -177,7 +174,7 @@ async function showCurrentUser(config: Config, accessToken: string) {
 async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
   const { isoStart, isoEnd } = getCurrentDay();
 
-  const allEvents =
+  const allEvents = (
     (
       await getAbsences(
         {
@@ -187,7 +184,8 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
         },
         loginInfo.access_token
       )
-    ).data.events ?? [];
+    ).data.events ?? []
+  ).filter((x) => !x.user?.team?.name || x.user.team.name.includes(teamPrefix));
 
   if (allEvents.length === 0) {
     console.log("No absences found.");
@@ -195,30 +193,30 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
   }
 
   console.log(
-    "Who                    | Team                       | Date           | Time        | Type                   |"
+    "\nWho                    | Team                       | Date           | Time        | Type                   |"
   );
   console.log(
     "-----------------------|----------------------------|----------------|-------------|------------------------|"
   );
 
-  const date = DateTime.fromISO(isoStart).toFormat("dd.MM.yyyy ccc")
+  const date = DateTime.fromISO(isoStart).toFormat("dd.MM.yyyy ccc");
 
-  allEvents
-    .filter((x) => x.user.team.name.includes(teamPrefix))
-    .forEach((event) => {
-      const startTime = DateTime.fromISO(event.started_at).setZone(
-        "Europe/Prague"
-      );
-      const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
+  allEvents.forEach((event) => {
+    const startTime = DateTime.fromISO(event.started_at).setZone(
+      "Europe/Prague"
+    );
+    const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
 
-      const timeRange = `${startTime.toFormat("HH:mm")}-${endTime.toFormat(
-        "HH:mm"
-      )}`;
+    const timeRange = `${startTime.toFormat("HH:mm")}-${endTime.toFormat(
+      "HH:mm"
+    )}`;
 
-      console.log(
-        `${event.user.full_name.padEnd(22)} | ${event.user.team.name.padEnd(26)} | ${date} | ${timeRange.padEnd(
-          11
-        )} | ${event.user_absence_event.absence_event_name.padEnd(18)}`
-      );
-    });
+    console.log(
+      `${event.user.full_name.padEnd(22)} | ${(event.user?.team?.name ?? '-').padEnd(
+        26
+      )} | ${date} | ${timeRange.padEnd(
+        11
+      )} | ${event.user_absence_event.absence_event_name.padEnd(18)}`
+    );
+  });
 }

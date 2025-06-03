@@ -7,7 +7,6 @@ export async function createAbsenceAction(config: Config) {
     config.credentials.email,
     config.credentials.password
   );
-  term.green("✓ Login successful\n\n");
   const selected = await chooseAbsenceOptions(loginInfo.access_token);
   term.green(`✓ Using absence: ${selected.absence_event.display_name}\n\n`);
 
@@ -29,13 +28,13 @@ export async function createAbsenceAction(config: Config) {
 }
 
 async function chooseAbsenceOptions(accessToken: string) {
-  term.cyan("Fetching absences...\n");
+  term.cyan("\nFetching absences...\n");
   const absenceResponse = await fetchAbsenceOptions(accessToken);
   if (absenceResponse.data.length === 1) {
     return absenceResponse.data[0];
   }
 
-  term.cyan("Select absence:\n");
+  term.cyan("\nSelect absence:\n");
   const items = absenceResponse.data.map((o) => o.absence_event.display_name);
   const selectedItemIndex = await term.singleColumnMenu(items).promise;
   term("\n");
