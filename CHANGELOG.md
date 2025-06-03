@@ -15,4 +15,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
-[1.3.1]: https://github.com/tj/commander.js/compare/v1.3.0...v1.3.1
+[1.3.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.3.0...v1.3.1
