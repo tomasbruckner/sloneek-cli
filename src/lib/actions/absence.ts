@@ -1,6 +1,6 @@
 import { fetchAbsenceOptions, fetchCreateAbsence, login } from "../utils/api";
 import { terminal as term } from "terminal-kit";
-import { convertDayAndTimeToIso, convertDayToISO } from "../utils/time";
+import { convertDayAndTimeToIso, convertDayToISO, getTodayFormatted } from "../utils/time";
 
 export async function createAbsenceAction(config: Config) {
   const loginInfo = await login(
@@ -28,7 +28,6 @@ export async function createAbsenceAction(config: Config) {
 }
 
 async function chooseAbsenceOptions(accessToken: string) {
-  term.cyan("\nFetching absences...\n");
   const absenceResponse = await fetchAbsenceOptions(accessToken);
   if (absenceResponse.data.length === 1) {
     return absenceResponse.data[0];
@@ -54,8 +53,8 @@ async function chooseFullDayAbsence(
   ]).promise;
   term("\n");
 
-  term("Start day (example 16.5.2025): ");
-  const from = (await term.inputField().promise) ?? "";
+  term("Start day (example 16.5.2025, default is today): ");
+  const from = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
 
   if (selectedItemIndex.selectedIndex === 0) {
@@ -73,8 +72,8 @@ async function chooseFullDayAbsence(
     return;
   }
 
-  term("End day (example 16.5.2025): ");
-  const to = (await term.inputField().promise) ?? "";
+  term("End day (example 16.5.2025, default is today): ");
+  const to = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
 
   await fetchCreateAbsence(accessToken, {
@@ -112,8 +111,8 @@ async function chooseHalfDayAbsence(
     "Second half of the day (after lunch)",
   ]).promise;
 
-  term("Start day (example 16.5.2025): ");
-  const from = (await term.inputField().promise) ?? "";
+  term("Start day (example 16.5.2025, default is today): ");
+  const from = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
 
   await fetchCreateAbsence(accessToken, {
@@ -135,8 +134,8 @@ async function chooseHoursAbsence(
   message: string,
   option: AbsenceOption
 ) {
-  term("Start day (example 16.5.2025): ");
-  const from = (await term.inputField().promise) ?? "";
+  term("Start day (example 16.5.2025, default is today): ");
+  const from = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
 
   term("Start time (example 12:30): ");

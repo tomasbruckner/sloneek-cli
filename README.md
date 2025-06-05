@@ -115,6 +115,15 @@ Create absence
 sloneek absence
 ```
 
+## Canceling absences (absence-cancel action)
+
+Cancel an existing absence
+
+```bash
+# lists your absences and lets you select which one to cancel
+sloneek absence-cancel
+```
+
 ## Help
 Prints help for every action
 ```bash
@@ -126,6 +135,9 @@ sloneek help list
 
 # show help for absence action
 sloneek help absence
+
+# show help for absence-cancel action
+sloneek help absence-cancel
 
 # show help for init action
 sloneek help init

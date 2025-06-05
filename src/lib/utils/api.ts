@@ -180,3 +180,16 @@ export async function fetchCreateAbsence(accessToken: string, payload: AbsencePa
   );
 }
 
+export async function fetchCancelAbsence(accessToken: string, absenceUuid: string) {
+  console.log("Canceling absence...");
+  return apiCall<unknown>(
+    `https://api2.sloneek.com/v2/module-absence/absence/absence/${absenceUuid}/change-status`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      data: { action: "user_cancel" },
+    }
+  );
+}

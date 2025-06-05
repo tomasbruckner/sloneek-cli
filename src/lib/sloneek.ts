@@ -7,6 +7,7 @@ import { listEventsAction } from "./actions/list";
 import { createLogAction } from "./actions/log";
 import { initConfigAction } from "./actions/init";
 import { createAbsenceAction } from "./actions/absence";
+import { absenceCancelAction } from "./actions/absence-cancel";
 
 export async function main(): Promise<void> {
   try {
@@ -25,6 +26,8 @@ export async function main(): Promise<void> {
       await createLogAction(config, args);
     } else if (args.command === "absence") {
       await createAbsenceAction(config);
+    } else if (args.command === "absence-cancel") {
+      await absenceCancelAction(config);
     } else {
       throw new Error("Invalid command");
     }
@@ -36,11 +39,10 @@ export async function main(): Promise<void> {
   process.exit(0);
 }
 
-// Handle Ctrl+C gracefully
 term.on("key", (name: string) => {
   if (name === "CTRL_C") {
     term.clear();
-    term.red("Operation cancelled.\n");
+    term.red("Action aborted by user.\n");
     process.exit(1);
   }
 });

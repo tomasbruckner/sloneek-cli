@@ -1,7 +1,6 @@
 import { Command } from "@commander-js/extra-typings";
 import packageJson from '../../../package.json';
 
-
 export function parseArgs(): ParsedArgs {
   const program = new Command()
     .name(packageJson.name)
@@ -10,7 +9,6 @@ export function parseArgs(): ParsedArgs {
 
   let result: ParsedArgs | null = null;
 
-  // Create command
   program
     .command("log")
     .description("Create a new Sloneek worklog")
@@ -38,7 +36,6 @@ export function parseArgs(): ParsedArgs {
     .option("-c, --client", "Interactive client mode")
     .option("-p, --project", "Interactive project mode")
     .action((options) => {
-      // Process escape sequences in message
       const processedMessage = options.message
         .replace(/\\n/g, "\n")
         .replace(/\\t/g, "\t")
@@ -57,7 +54,6 @@ export function parseArgs(): ParsedArgs {
       if (options.day) result.day = options.day;
     });
 
-  // absence command
   program
     .command("absence")
     .description("Create a new Sloneek absence")
@@ -65,7 +61,13 @@ export function parseArgs(): ParsedArgs {
       result = { command: "absence" } as const;
     });
 
-  // List command
+  program
+    .command("absence-cancel")
+    .description("Cancel an existing Sloneek absence")
+    .action(() => {
+      result = { command: "absence-cancel" } as const;
+    });
+
   program
     .command("list")
     .option(
@@ -81,7 +83,6 @@ export function parseArgs(): ParsedArgs {
       result = { command: "list", other: !!option.other, teamPrefix: option.teamPrefix ?? ''  } as const;
     });
 
-  // Init command
   program
     .command("init")
     .description("Initialize Sloneek configuration")

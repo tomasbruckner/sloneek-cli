@@ -3,3 +3,4 @@ tsconfig.json
 *.test.ts
 coverage/
 .git/
+.idea/

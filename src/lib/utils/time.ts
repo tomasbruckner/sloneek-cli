@@ -153,6 +153,18 @@ export function getCurrentDay() {
   };
 }
 
+export function getTodayToEndOfYear() {
+  const now = DateTime.now().setZone(timezone);
+  const startOfDay = now.startOf("day");
+  const endOfYear = now.endOf("year").startOf("second");
+
+  return {
+    now,
+    isoStart: startOfDay.toISO({ suppressMilliseconds: true }) ?? "",
+    isoEnd: endOfYear.toISO({ suppressMilliseconds: true }) ?? "",
+  };
+}
+
 export function isSameDay(start: string, end: string) {
   const startDate = DateTime.fromISO(start).setZone(timezone);
   const endDate = DateTime.fromISO(end).setZone(timezone);
@@ -170,4 +182,9 @@ export function getStartDay(date: string) {
   const d = DateTime.fromISO(date).setZone(timezone);
 
   return d.startOf("day");
+}
+
+export function getTodayFormatted(): string {
+  const now = DateTime.now().setZone(timezone);
+  return now.toFormat("d.M.yyyy");
 }

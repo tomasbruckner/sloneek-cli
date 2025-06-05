@@ -6,6 +6,9 @@ type ParsedArgs =
     }
   | {
       command: "absence";
+    }
+  | {
+      command: "absence-cancel";
     };
 
 type ParsedArgsLog = {
@@ -141,6 +144,7 @@ interface AbsenceListPayload {
 interface AbsenceEventsResponse {
   data: {
     events?: {
+      uuid: string;
       user: {
         uuid: string;
         email: string;
