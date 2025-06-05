@@ -1,6 +1,8 @@
 # Sloneek easy logger
 This was motivated by frustating user experience of HR system Sloneek. If you want to do most common actions 100x faster than by using GUI, you can use this library.
 
+[![npm version](https://badge.fury.io/js/sloneek-cli.svg)](https://badge.fury.io/js/sloneek-cli)
+
 ## Prerequisities
 Install Node.js 22 or newer. You can download it from [here](https://nodejs.org/en).
 
