@@ -2,7 +2,7 @@ import { fetchAbsenceOptions, fetchCreateAbsence, login } from "../utils/api";
 import { terminal as term } from "terminal-kit";
 import { convertDayAndTimeToIso, convertDayToISO, getTodayFormatted } from "../utils/time";
 
-export async function createAbsenceAction(config: Config) {
+export async function createAbsenceAction(config: ProfileConfig) {
   const loginInfo = await login(
     config.credentials.email,
     config.credentials.password

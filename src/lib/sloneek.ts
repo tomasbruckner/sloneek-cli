@@ -1,33 +1,40 @@
 #!/usr/bin/env node
 
 import { terminal as term } from "terminal-kit";
-import { readConfig } from "./utils/config";
+import { getProfileConfig, readConfig } from "./utils/config";
 import { parseArgs } from "./utils/argument-parser";
 import { listEventsAction } from "./actions/list";
 import { createLogAction } from "./actions/log";
 import { initConfigAction } from "./actions/init";
 import { createAbsenceAction } from "./actions/absence";
 import { absenceCancelAction } from "./actions/absence-cancel";
+import { profileAction } from "./actions/profile";
 
 export async function main(): Promise<void> {
   try {
     const args = parseArgs();
 
     if (args.command === "init") {
-      await initConfigAction();
+      await initConfigAction(args.profile);
+      return;
+    }
+
+    if (args.command === "profile") {
+      await profileAction(args.profile, args.remove);
       return;
     }
 
     const config = await readConfig();
+    const profileConfig = await getProfileConfig(config, args.profile);
 
     if (args.command === "list") {
-      await listEventsAction(config, args);
+      await listEventsAction(profileConfig, args);
     } else if (args.command === "log") {
-      await createLogAction(config, args);
+      await createLogAction(profileConfig, args);
     } else if (args.command === "absence") {
-      await createAbsenceAction(config);
+      await createAbsenceAction(profileConfig);
     } else if (args.command === "absence-cancel") {
-      await absenceCancelAction(config);
+      await absenceCancelAction(profileConfig);
     } else {
       throw new Error("Invalid command");
     }

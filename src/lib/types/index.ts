@@ -1,15 +1,25 @@
+interface BaseCommand {
+  profile?: string;
+}
+
+type ParsedArgsProfile = {
+  command: "profile";
+  remove: boolean;
+} & BaseCommand;
+
 type ParsedArgs =
   | ParsedArgsLog
   | ParsedArgsList
-  | {
+  | ParsedArgsProfile
+  | ({
       command: "init";
-    }
-  | {
+    } & BaseCommand)
+  | ({
       command: "absence";
-    }
-  | {
+    } & BaseCommand)
+  | ({
       command: "absence-cancel";
-    };
+    } & BaseCommand);
 
 type ParsedArgsLog = {
   command: "log";
@@ -19,13 +29,13 @@ type ParsedArgsLog = {
   day?: string;
   interactiveClient: boolean;
   interactiveProject: boolean;
-};
+} & BaseCommand;
 
 type ParsedArgsList = {
   command: "list";
   other: boolean;
   teamPrefix: string;
-};
+} & BaseCommand;
 
 interface Client {
   uuid: string;
@@ -250,7 +260,7 @@ interface ApiOptions {
   body?: string;
 }
 
-interface Config {
+interface ProfileConfig {
   credentials: {
     email: string;
     password: string;
@@ -277,4 +287,10 @@ interface Config {
     end: string;
   };
   timestamp: string;
+}
+
+interface Config {
+  profiles: {
+    [key: string]: ProfileConfig;
+  };
 }

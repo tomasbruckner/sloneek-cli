@@ -1,6 +1,6 @@
 {
   "name": "sloneek-cli",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Sloneek CLI for creating your worklogs 100x faster.",
   "main": "index.js",
   "author": "Tomas Bruckner",
@@ -30,12 +30,16 @@
     "axios": "^1.9.0",
     "commander": "^14.0.0",
     "luxon": "^3.6.1",
+    "prettier": "^3.5.3",
     "terminal-kit": "^3.1.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@types/luxon": "^3.6.2"
+  },
+  "prettier": {
+    "printWidth": 120
   },
   "repository": {
     "type": "git",

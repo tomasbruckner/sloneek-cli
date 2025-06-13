@@ -3,7 +3,7 @@ import {fetchCancelAbsence, getAbsences, login} from "../utils/api";
 import {getTodayToEndOfYear} from "../utils/time";
 import {DateTime} from "luxon";
 
-export async function absenceCancelAction(config: Config) {
+export async function absenceCancelAction(config: ProfileConfig) {
     const loginInfo = await login(
         config.credentials.email,
         config.credentials.password

@@ -12,6 +12,7 @@ export function parseArgs(): ParsedArgs {
   program
     .command("log")
     .description("Create a new Sloneek worklog")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .requiredOption("-m, --message <message>", "Your message here")
     .option("-f, --from <time>", "Start time in HH:MM format", (value) => {
       if (!/^\d{1,2}:\d{2}$/.test(value)) {
@@ -47,6 +48,7 @@ export function parseArgs(): ParsedArgs {
         message: processedMessage,
         interactiveClient: options.client ?? false,
         interactiveProject: options.project ?? false,
+        profile: options.profile
       } as const;
 
       if (options.from) result.from = options.from;
@@ -57,15 +59,23 @@ export function parseArgs(): ParsedArgs {
   program
     .command("absence")
     .description("Create a new Sloneek absence")
-    .action(() => {
-      result = { command: "absence" } as const;
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .action((options) => {
+      result = { 
+        command: "absence",
+        profile: options.profile
+      } as const;
     });
 
   program
     .command("absence-cancel")
     .description("Cancel an existing Sloneek absence")
-    .action(() => {
-      result = { command: "absence-cancel" } as const;
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .action((options) => {
+      result = { 
+        command: "absence-cancel",
+        profile: options.profile
+      } as const;
     });
 
   program
@@ -78,16 +88,41 @@ export function parseArgs(): ParsedArgs {
       "-t, --team-prefix <team_name>",
       "Filter absences only for specific team. With conjuction with --other parameter"
     )
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
-      result = { command: "list", other: !!option.other, teamPrefix: option.teamPrefix ?? ''  } as const;
+      result = { 
+        command: "list", 
+        other: !!option.other, 
+        teamPrefix: option.teamPrefix ?? '',
+        profile: option.profile
+      } as const;
+    });
+
+  program
+    .command("profile")
+    .description("Display profile information")
+    .option("-r, --profile <profile>", "Show specific profile instead of all profiles")
+    .option("-d, --delete", "Remove a profile")
+    .option("--remove", "Remove a profile (alias for --delete)")
+    .option("--cancel", "Remove a profile (alias for --delete)")
+    .action((options) => {
+      result = { 
+        command: "profile",
+        profile: options.profile,
+        remove: !!(options.remove || options.delete || options.cancel)
+      } as const;
     });
 
   program
     .command("init")
     .description("Initialize Sloneek configuration")
-    .action(() => {
-      result = { command: "init" } as const;
+    .option("-r, --profile <profile>", "Create or update a specific profile")
+    .action((options) => {
+      result = { 
+        command: "init",
+        profile: options.profile
+      } as const;
     });
 
   program.parse();

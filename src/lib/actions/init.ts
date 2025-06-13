@@ -2,12 +2,47 @@
 
 import { terminal as term } from "terminal-kit";
 import { fetchClients, fetchUserEvents, fetchUsers, login } from "../utils/api";
-import { writeConfig } from "../utils/config";
+import { configExists, readConfig, writeConfig } from "../utils/config";
 
-export async function initConfigAction(): Promise<void> {
+export async function initConfigAction(profileName?: string): Promise<void> {
   try {
     term.clear();
     term.cyan("Sloneek Configuration Setup\n\n");
+
+    let selectedProfileName = profileName || "_default";
+    let existingConfig: Config | null = null;
+    let overwriteDefault = false;
+
+    const hasExistingConfig = await configExists();
+    if (hasExistingConfig) {
+      existingConfig = await readConfig();
+
+      if (profileName) {
+        if (profileName === "_default") {
+          overwriteDefault = true;
+          term.green("✓ Will overwrite default profile\n\n");
+        } else {
+          selectedProfileName = profileName;
+          term.green(`✓ Will create/update profile: ${selectedProfileName}\n\n`);
+        }
+      } else {
+        term.cyan("A configuration already exists.\n");
+        term.cyan("Do you want to:\n");
+        const options = ["Overwrite default profile", "Create a new profile"];
+        const response = await term.singleColumnMenu(options).promise;
+
+        if (response.selectedIndex === 0) {
+          overwriteDefault = true;
+          selectedProfileName = "_default";
+          term.green("✓ Will overwrite default profile\n\n");
+        } else {
+          term("Enter profile name: ");
+          selectedProfileName = (await term.inputField({ echo: true }).promise) ?? "profile1";
+          term("\n\n");
+          term.green(`✓ Will create new profile: ${selectedProfileName}\n\n`);
+        }
+      }
+    }
 
     term("Username: ");
     const email = (await term.inputField({ echo: true }).promise) ?? "";
@@ -89,7 +124,7 @@ export async function initConfigAction(): Promise<void> {
       throw new Error("Selected user not found");
     }
 
-    const config: Config = {
+    const profileConfig: ProfileConfig = {
       credentials: {
         email,
         password,
@@ -118,15 +153,45 @@ export async function initConfigAction(): Promise<void> {
       timestamp: new Date().toISOString(),
     };
 
+    // Create or update the configuration
+    let config: Config;
+    if (existingConfig && !overwriteDefault) {
+      // Add new profile to existing config
+      config = {
+        ...existingConfig,
+        profiles: {
+          ...existingConfig.profiles,
+          [selectedProfileName]: profileConfig
+        }
+      };
+    } else if (existingConfig && overwriteDefault) {
+      // Overwrite default profile in existing config
+      config = {
+        ...existingConfig,
+        profiles: {
+          ...existingConfig.profiles,
+          "_default": profileConfig
+        }
+      };
+    } else {
+      // Create new config with default profile
+      config = {
+        profiles: {
+          "_default": profileConfig
+        }
+      };
+    }
+
     await writeConfig(config);
 
     term.green("✓ Configuration saved\n\n");
 
     term.cyan("Configuration Summary:\n");
-    term(`User: ${config.user.name}\n`);
-    term(`Client: ${config.client.name}\n`);
-    term(`Project: ${config.project.name}\n`);
-    term(`Work Hours: ${config.workHours.start} - ${config.workHours.end}\n\n`);
+    term(`Profile: ${selectedProfileName}\n`);
+    term(`User: ${profileConfig.user.name}\n`);
+    term(`Client: ${profileConfig.client.name}\n`);
+    term(`Project: ${profileConfig.project.name}\n`);
+    term(`Work Hours: ${profileConfig.workHours.start} - ${profileConfig.workHours.end}\n\n`);
 
     term.green("Setup completed successfully!\n");
   } catch (error) {

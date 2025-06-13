@@ -7,7 +7,7 @@ import {
 } from "../utils/time";
 
 export async function createLogAction(
-  config: Config,
+  config: ProfileConfig,
   args: ParsedArgsLog
 ) {
   const { message, interactiveClient, interactiveProject, day } = args;
@@ -105,7 +105,7 @@ export async function createLogAction(
 async function interactiveClientProjectSelection(
   accessToken: string,
   userUuid: string,
-  config: Config,
+  config: ProfileConfig,
   selectClient: boolean = false,
   selectProject: boolean = false
 ): Promise<ClientProjectSelection> {
