@@ -19,6 +19,9 @@ type ParsedArgs =
     } & BaseCommand)
   | ({
       command: "absence-cancel";
+    } & BaseCommand)
+  | ({
+      command: "log-cancel";
     } & BaseCommand);
 
 type ParsedArgsLog = {

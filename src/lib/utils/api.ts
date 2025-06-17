@@ -193,3 +193,17 @@ export async function fetchCancelAbsence(accessToken: string, absenceUuid: strin
     }
   );
 }
+
+export async function fetchCancelWorklog(accessToken: string, worklogUuid: string) {
+  console.log("Canceling worklog...");
+  return apiCall<unknown>(
+    `https://api2.sloneek.com/planning/scheduled-events/${worklogUuid}/change-status`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      data: { action: "user_cancel" },
+    }
+  );
+}

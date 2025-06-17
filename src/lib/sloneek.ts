@@ -8,6 +8,7 @@ import { createLogAction } from "./actions/log";
 import { initConfigAction } from "./actions/init";
 import { createAbsenceAction } from "./actions/absence";
 import { absenceCancelAction } from "./actions/absence-cancel";
+import { logCancelAction } from "./actions/log-cancel";
 import { profileAction } from "./actions/profile";
 
 export async function main(): Promise<void> {
@@ -35,6 +36,8 @@ export async function main(): Promise<void> {
       await createAbsenceAction(profileConfig);
     } else if (args.command === "absence-cancel") {
       await absenceCancelAction(profileConfig);
+    } else if (args.command === "log-cancel") {
+      await logCancelAction(profileConfig);
     } else {
       throw new Error("Invalid command");
     }

@@ -85,6 +85,17 @@ export function parseArgs(): ParsedArgs {
     });
 
   program
+    .command("log-cancel")
+    .description("Cancel an existing Sloneek worklog")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .action((options) => {
+      result = { 
+        command: "log-cancel",
+        profile: options.profile
+      } as const;
+    });
+
+  program
     .command("list")
     .option(
       "-o, --other",

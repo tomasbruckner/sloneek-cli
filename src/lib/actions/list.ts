@@ -82,8 +82,8 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
 
           expandedAbsenceEvents.push({
             ...event,
-            started_at: currentDate.toISO()!,
-            ended_at: dayEndTime.toISO()!,
+            started_at: currentDate.toISO({ suppressMilliseconds: true })!,
+            ended_at: dayEndTime.toISO({ suppressMilliseconds: true })!,
             type: "absence",
             displayClient: "—",
             displayProject: event.user_absence_event?.absence_event_name || "N/A",

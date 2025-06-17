@@ -73,7 +73,7 @@ export async function createLogAction(
     .startOf("day")
     .minus({ days: 1 })
     .plus({ hours: Math.floor(duration / 60), minutes: duration % 60 })
-    .toISO();
+    .toISO({ suppressMilliseconds: true });
 
   await createEvent(
     {
@@ -87,7 +87,7 @@ export async function createLogAction(
       days: [],
       duration_time: durationTime!,
       duration: duration,
-      timezone: startDateTime.toISO()!,
+      timezone: startDateTime.toISO({ suppressMilliseconds: true })!,
       note: message ?? "",
       is_automatically_approve: false,
       message: message ?? "",
