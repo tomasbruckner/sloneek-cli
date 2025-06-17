@@ -102,6 +102,7 @@ sloneek log --message "Sprint planning meeting" --day "15.12" --from "9:00" --to
 - `--from HH:MM` (or `-f HH:MM`) - Start time (default: from config, usually 8:00)
 - `--to HH:MM` (or `-t HH:MM`) - End time (default: from config, usually 16:00)
 - `--day "DD.MM"` or `--day "DD.MM."` (or `-d DD.MM`) - Specific date (default: today)
+- `--yesterday` (or `-y`) - Use yesterday's date (mutually exclusive with `--day`)
 - `--client` (or `-c`) - Interactive client selection (flag, no value needed)
 - `--project` (or `-p`) - Interactive project selection (flag, no value needed)
 - `--profile <profile>` (or `-r <profile>`) - Use specific profile instead of the active one

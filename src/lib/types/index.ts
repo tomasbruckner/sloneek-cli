@@ -27,6 +27,7 @@ type ParsedArgsLog = {
   from?: string;
   to?: string;
   day?: string;
+  yesterday?: boolean;
   interactiveClient: boolean;
   interactiveProject: boolean;
 } & BaseCommand;

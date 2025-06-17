@@ -34,9 +34,14 @@ export function parseArgs(): ParsedArgs {
       }
       return value;
     })
+    .option("-y, --yesterday", "Use yesterday's date")
     .option("-c, --client", "Interactive client mode")
     .option("-p, --project", "Interactive project mode")
     .action((options) => {
+      // Check for mutual exclusivity between --day and --yesterday
+      if (options.day && options.yesterday) {
+        program.error("Error: --day and --yesterday cannot be used together");
+      }
       const processedMessage = options.message
         .replace(/\\n/g, "\n")
         .replace(/\\t/g, "\t")
@@ -54,6 +59,7 @@ export function parseArgs(): ParsedArgs {
       if (options.from) result.from = options.from;
       if (options.to) result.to = options.to;
       if (options.day) result.day = options.day;
+      if (options.yesterday) result.yesterday = true;
     });
 
   program

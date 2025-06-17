@@ -5,12 +5,13 @@ import {
   createDateTimeForSpecificDay,
   createDateTimeForToday,
 } from "../utils/time";
+import { DateTime } from "luxon";
 
 export async function createLogAction(
   config: ProfileConfig,
   args: ParsedArgsLog
 ) {
-  const { message, interactiveClient, interactiveProject, day } = args;
+  const { message, interactiveClient, interactiveProject, day, yesterday } = args;
 
   const loginInfo = await login(
     config.credentials.email,
@@ -47,12 +48,19 @@ export async function createLogAction(
   const startTime = args.from || config.workHours.start;
   const endTime = args.to || config.workHours.end;
 
-  const startDateTime = day
-    ? createDateTimeForSpecificDay(startTime, day)
-    : createDateTimeForToday(startTime);
-  const endDateTime = day
-    ? createDateTimeForSpecificDay(endTime, day)
-    : createDateTimeForToday(endTime);
+  let startDateTime: DateTime;
+  let endDateTime: DateTime;
+
+  if (day) {
+    startDateTime = createDateTimeForSpecificDay(startTime, day);
+    endDateTime = createDateTimeForSpecificDay(endTime, day);
+  } else if (yesterday) {
+    startDateTime = createDateTimeForToday(startTime).minus({ days: 1 });
+    endDateTime = createDateTimeForToday(endTime).minus({ days: 1 });
+  } else {
+    startDateTime = createDateTimeForToday(startTime);
+    endDateTime = createDateTimeForToday(endTime);
+  }
 
   if (endDateTime <= startDateTime) {
     throw new Error("End time must be after start time");

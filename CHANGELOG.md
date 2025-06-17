@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] (2025-06-12)
+
+### Added
+- New `--yesterday` (or `-y`) parameter for the `log` command to use yesterday's date (mutually exclusive with `--day`)
+
 ## [1.6.0] (2025-06-10)
 
 ### Added
@@ -40,6 +45,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.6.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.3.1...v1.4.0
