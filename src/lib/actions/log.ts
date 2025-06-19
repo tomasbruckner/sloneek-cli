@@ -1,37 +1,23 @@
 import { createEvent, getClients, login } from "../utils/api";
 import { terminal as term } from "terminal-kit";
-import {
-  calculateDurationMinutes,
-  createDateTimeForSpecificDay,
-  createDateTimeForToday,
-} from "../utils/time";
+import { calculateDurationMinutes, createDateTimeForSpecificDay, createDateTimeForToday } from "../utils/time";
 import { DateTime } from "luxon";
 
-export async function createLogAction(
-  config: ProfileConfig,
-  args: ParsedArgsLog
-) {
+export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog) {
   const { message, interactiveClient, interactiveProject, day, yesterday } = args;
 
-  const loginInfo = await login(
-    config.credentials.email,
-    config.credentials.password
-  );
+  const loginInfo = await login(config.credentials.email, config.credentials.password);
 
-  let clientUuid: string,
-    clientDisplayName: string,
-    projectUuid: string,
-    projectDisplayName: string;
+  let clientUuid: string, clientDisplayName: string, projectUuid: string, projectDisplayName: string;
 
   if (interactiveClient || interactiveProject) {
-    const { selectedClient, selectedProject } =
-      await interactiveClientProjectSelection(
-        loginInfo.access_token,
-        config.user.uuid,
-        config,
-        interactiveClient,
-        interactiveProject
-      );
+    const { selectedClient, selectedProject } = await interactiveClientProjectSelection(
+      loginInfo.access_token,
+      config.user.uuid,
+      config,
+      interactiveClient,
+      interactiveProject,
+    );
 
     clientUuid = selectedClient?.uuid || config.client.uuid;
     clientDisplayName = selectedClient?.name || config.client.name;
@@ -79,7 +65,7 @@ export async function createLogAction(
     {
       isRepeat: false,
       user_planning_event_uuid: config.planningEvent.uuid,
-      planning_categories: [],
+      planning_categories: config.categories ? config.categories.map((category) => category.uuid) : [],
       started_at: startDateTime.toISO({ suppressMilliseconds: true })!,
       ended_at: endDateTime.toISO({ suppressMilliseconds: true })!,
       start_time: startDateTime.toFormat("HH:mm:ssZZ"),
@@ -104,7 +90,7 @@ export async function createLogAction(
       startDateTime,
       startTime,
       endTime,
-    }
+    },
   );
 
   term.green("✓ Event created successfully!");
@@ -115,7 +101,7 @@ async function interactiveClientProjectSelection(
   userUuid: string,
   config: ProfileConfig,
   selectClient: boolean = false,
-  selectProject: boolean = false
+  selectProject: boolean = false,
 ): Promise<ClientProjectSelection> {
   if (!selectClient && !selectProject) {
     return { selectedClient: null, selectedProject: null };
@@ -129,8 +115,7 @@ async function interactiveClientProjectSelection(
   if (selectClient) {
     term.cyan("Choose client:\n");
     const clientItems = clientsResponse.data.map((client) => client.name);
-    const selectedClientIndex = await term.singleColumnMenu(clientItems)
-      .promise;
+    const selectedClientIndex = await term.gridMenu(clientItems).promise;
     selectedClient = clientsResponse.data[selectedClientIndex.selectedIndex];
     term("\n");
   }
@@ -139,20 +124,14 @@ async function interactiveClientProjectSelection(
     // Use client from config when only selecting project
     if (!selectClient && config.client && config.client.uuid) {
       // Find the client from config in the response data
-      const configClient = clientsResponse.data.find(
-        (client) => client.uuid === config.client.uuid
-      );
+      const configClient = clientsResponse.data.find((client) => client.uuid === config.client.uuid);
       if (configClient) {
         selectedClient = configClient;
         term.cyan(`Using client from config: ${configClient.name}\n`);
         term.cyan("Choose project:\n");
-        const projectItems = configClient.projects.map(
-          (project) => project.project_name
-        );
-        const selectedProjectIndex = await term.singleColumnMenu(projectItems)
-          .promise;
-        selectedProject =
-          configClient.projects[selectedProjectIndex.selectedIndex];
+        const projectItems = configClient.projects.map((project) => project.project_name);
+        const selectedProjectIndex = await term.gridMenu(projectItems).promise;
+        selectedProject = configClient.projects[selectedProjectIndex.selectedIndex];
         term("\n");
       } else {
         throw new Error("Client from config not found in available clients");
@@ -164,22 +143,14 @@ async function interactiveClientProjectSelection(
       if (!selectedClient && clientsResponse.data.length > 1) {
         term.cyan("Choose client for project selection:\n");
         const clientItems = clientsResponse.data.map((client) => client.name);
-        const selectedClientIndex = await term.singleColumnMenu(clientItems)
-          .promise;
-        const clientForProjectSelection =
-          clientsResponse.data[selectedClientIndex.selectedIndex];
+        const selectedClientIndex = await term.gridMenu(clientItems).promise;
+        const clientForProjectSelection = clientsResponse.data[selectedClientIndex.selectedIndex];
         term("\n");
 
         term.cyan("Choose project:\n");
-        const projectItems = clientForProjectSelection.projects.map(
-          (project) => project.project_name
-        );
-        const selectedProjectIndex = await term.singleColumnMenu(projectItems)
-          .promise;
-        selectedProject =
-          clientForProjectSelection.projects[
-            selectedProjectIndex.selectedIndex
-          ];
+        const projectItems = clientForProjectSelection.projects.map((project) => project.project_name);
+        const selectedProjectIndex = await term.gridMenu(projectItems).promise;
+        selectedProject = clientForProjectSelection.projects[selectedProjectIndex.selectedIndex];
 
         // If we're only selecting project and not client, we need the client info too
         if (!selectClient) {
@@ -187,13 +158,9 @@ async function interactiveClientProjectSelection(
         }
       } else {
         term.cyan("Choose project:\n");
-        const projectItems = clientForProjects.projects.map(
-          (project) => project.project_name
-        );
-        const selectedProjectIndex = await term.singleColumnMenu(projectItems)
-          .promise;
-        selectedProject =
-          clientForProjects.projects[selectedProjectIndex.selectedIndex];
+        const projectItems = clientForProjects.projects.map((project) => project.project_name);
+        const selectedProjectIndex = await term.gridMenu(projectItems).promise;
+        selectedProject = clientForProjects.projects[selectedProjectIndex.selectedIndex];
 
         // If we're only selecting project, we need the client info too
         if (!selectClient) {

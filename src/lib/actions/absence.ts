@@ -3,10 +3,7 @@ import { terminal as term } from "terminal-kit";
 import { convertDayAndTimeToIso, convertDayToISO, getTodayFormatted } from "../utils/time";
 
 export async function createAbsenceAction(config: ProfileConfig) {
-  const loginInfo = await login(
-    config.credentials.email,
-    config.credentials.password
-  );
+  const loginInfo = await login(config.credentials.email, config.credentials.password);
   const selected = await chooseAbsenceOptions(loginInfo.access_token);
   term.green(`✓ Using absence: ${selected.absence_event.display_name}\n\n`);
 
@@ -35,22 +32,15 @@ async function chooseAbsenceOptions(accessToken: string) {
 
   term.cyan("\nSelect absence:\n");
   const items = absenceResponse.data.map((o) => o.absence_event.display_name);
-  const selectedItemIndex = await term.singleColumnMenu(items).promise;
+  const selectedItemIndex = await term.gridMenu(items).promise;
   term("\n");
 
   return absenceResponse.data[selectedItemIndex.selectedIndex];
 }
 
-async function chooseFullDayAbsence(
-  accessToken: string,
-  message: string,
-  option: AbsenceOption
-) {
+async function chooseFullDayAbsence(accessToken: string, message: string, option: AbsenceOption) {
   term.cyan("Do you want absence to be single day or multiple days:\n");
-  const selectedItemIndex = await term.singleColumnMenu([
-    "Single day",
-    "Multiple day",
-  ]).promise;
+  const selectedItemIndex = await term.singleColumnMenu(["Single day", "Multiple day"]).promise;
   term("\n");
 
   term("Start day (example 16.5.2025, default is today): ");
@@ -89,16 +79,9 @@ async function chooseFullDayAbsence(
   });
 }
 
-async function chooseHalfDayAbsence(
-  accessToken: string,
-  message: string,
-  option: AbsenceOption
-) {
+async function chooseHalfDayAbsence(accessToken: string, message: string, option: AbsenceOption) {
   term.cyan("Select absence half/full day:\n");
-  const selectedItemIndex = await term.singleColumnMenu([
-    "Half day",
-    "Full day",
-  ]).promise;
+  const selectedItemIndex = await term.singleColumnMenu(["Half day", "Full day"]).promise;
   term("\n");
   if (selectedItemIndex.selectedIndex === 1) {
     await chooseFullDayAbsence(accessToken, message, option);
@@ -129,11 +112,7 @@ async function chooseHalfDayAbsence(
   });
 }
 
-async function chooseHoursAbsence(
-  accessToken: string,
-  message: string,
-  option: AbsenceOption
-) {
+async function chooseHoursAbsence(accessToken: string, message: string, option: AbsenceOption) {
   term("Start day (example 16.5.2025, default is today): ");
   const from = (await term.inputField().promise) || getTodayFormatted();
   term("\n");

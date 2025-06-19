@@ -44,7 +44,7 @@ export async function logCancelAction(config: ProfileConfig) {
     return `${startFormatted} - ${endFormatted} | ${clientName} | ${projectName} | ${message}`;
   });
 
-  const selectedItemIndex = await term.singleColumnMenu(items).promise;
+  const selectedItemIndex = await term.gridMenu(items).promise;
   term("\n");
 
   const selectedWorklog = worklogs[selectedItemIndex.selectedIndex];

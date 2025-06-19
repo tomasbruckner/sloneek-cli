@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { terminal as term } from "terminal-kit";
-import { fetchClients, fetchUserEvents, fetchUsers, login } from "../utils/api";
+import { fetchCategories, fetchClients, fetchUserEvents, fetchUsers, login } from "../utils/api";
 import { configExists, readConfig, writeConfig } from "../utils/config";
 
 export async function initConfigAction(profileName?: string): Promise<void> {
@@ -66,9 +66,8 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     } else {
       term.cyan("Select user:\n");
       const userItems = usersResponse.data.map((user) => user.name);
-      const selectedUserIndex = await term.singleColumnMenu(userItems).promise;
-      selectedUserUuid =
-        usersResponse.data[selectedUserIndex.selectedIndex].uuid;
+      const selectedUserIndex = await term.gridMenu(userItems).promise;
+      selectedUserUuid = usersResponse.data[selectedUserIndex.selectedIndex].uuid;
       term("\n");
     }
 
@@ -77,29 +76,59 @@ export async function initConfigAction(profileName?: string): Promise<void> {
 
     term.cyan("Choose client:\n");
     const clientItems = clientsResponse.data.map((client) => client.name);
-    const selectedClientIndex = await term.singleColumnMenu(clientItems)
-      .promise;
-    const selectedClient =
-      clientsResponse.data[selectedClientIndex.selectedIndex];
+    const selectedClientIndex = await term.gridMenu(clientItems).promise;
+    const selectedClient = clientsResponse.data[selectedClientIndex.selectedIndex];
     term("\n");
 
     term.cyan("Choose project:\n");
-    const projectItems = selectedClient.projects.map(
-      (project) => project.project_name
-    );
-    const selectedProjectIndex = await term.singleColumnMenu(projectItems)
-      .promise;
-    const selectedProject =
-      selectedClient.projects[selectedProjectIndex.selectedIndex];
+    const projectItems = selectedClient.projects.map((project) => project.project_name);
+    const selectedProjectIndex = await term.gridMenu(projectItems).promise;
+    const selectedProject = selectedClient.projects[selectedProjectIndex.selectedIndex];
     term("\n");
 
     term.cyan("Fetching planning events...\n");
-    const planningEventsResponse = await fetchUserEvents(
-      loginInfo.access_token,
-      selectedUserUuid
-    );
+    const planningEventsResponse = await fetchUserEvents(loginInfo.access_token, selectedUserUuid);
 
-    term.green("✓ Planning event retrieved\n\n");
+    let selectedPlanningEvent;
+    if (planningEventsResponse.data.length === 1) {
+      selectedPlanningEvent = planningEventsResponse.data[0];
+      term.green(`✓ Using planning event: ${selectedPlanningEvent.planning_event.display_name}\n\n`);
+    } else {
+      term.cyan("Choose planning event:\n");
+      const planningEventItems = planningEventsResponse.data.map((event) => event.planning_event.display_name);
+      const selectedPlanningEventIndex = await term.gridMenu(planningEventItems).promise;
+      selectedPlanningEvent = planningEventsResponse.data[selectedPlanningEventIndex.selectedIndex];
+      term("\n");
+      term.green(`✓ Selected planning event: ${selectedPlanningEvent.planning_event.display_name}\n\n`);
+    }
+
+    term.cyan("Fetching categories...\n");
+    const categoriesResponse = await fetchCategories(loginInfo.access_token);
+
+    term.cyan("Select categories:\n");
+    const selectedCategories = [];
+
+    for (const category of categoriesResponse.data) {
+      term.cyan(`Include category "${category.name}"? (y/n) `);
+      const includeCategory = await term.yesOrNo({ yes: ["y", "ENTER"], no: ["n"] }).promise;
+
+      if (includeCategory) {
+        selectedCategories.push({
+          uuid: category.uuid,
+          name: category.name,
+        });
+        term.green(` ✓ Added\n`);
+      } else {
+        term.yellow(` ✗ Skipped\n`);
+      }
+    }
+
+    term("\n");
+    if (selectedCategories.length > 0) {
+      term.green(`✓ Selected categories: ${selectedCategories.map((c) => c.name).join(", ")}\n\n`);
+    } else {
+      term.yellow("No categories selected\n\n");
+    }
 
     term("Start time (default 8:00): ");
     const startTimeInput = await term.inputField({
@@ -117,9 +146,7 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     const endTime = endTimeInput || "16:00";
     term("\n\n");
 
-    const selectedUser = usersResponse.data.find(
-      (u) => u.uuid === selectedUserUuid
-    );
+    const selectedUser = usersResponse.data.find((u) => u.uuid === selectedUserUuid);
     if (!selectedUser) {
       throw new Error("Selected user not found");
     }
@@ -142,10 +169,11 @@ export async function initConfigAction(profileName?: string): Promise<void> {
         name: selectedProject.project_name,
       },
       planningEvent: {
-        uuid: planningEventsResponse.data[0].uuid,
-        detail_uuid: planningEventsResponse.data[0].planning_event.uuid,
-        name: planningEventsResponse.data[0].planning_event.display_name,
+        uuid: selectedPlanningEvent.uuid,
+        detail_uuid: selectedPlanningEvent.planning_event.uuid,
+        name: selectedPlanningEvent.planning_event.display_name,
       },
+      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
       workHours: {
         start: startTime,
         end: endTime,
@@ -161,8 +189,8 @@ export async function initConfigAction(profileName?: string): Promise<void> {
         ...existingConfig,
         profiles: {
           ...existingConfig.profiles,
-          [selectedProfileName]: profileConfig
-        }
+          [selectedProfileName]: profileConfig,
+        },
       };
     } else if (existingConfig && overwriteDefault) {
       // Overwrite default profile in existing config
@@ -170,15 +198,15 @@ export async function initConfigAction(profileName?: string): Promise<void> {
         ...existingConfig,
         profiles: {
           ...existingConfig.profiles,
-          "_default": profileConfig
-        }
+          _default: profileConfig,
+        },
       };
     } else {
       // Create new config with default profile
       config = {
         profiles: {
-          "_default": profileConfig
-        }
+          _default: profileConfig,
+        },
       };
     }
 
@@ -191,6 +219,9 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     term(`User: ${profileConfig.user.name}\n`);
     term(`Client: ${profileConfig.client.name}\n`);
     term(`Project: ${profileConfig.project.name}\n`);
+    if (profileConfig.categories && profileConfig.categories.length > 0) {
+      term(`Categories: ${profileConfig.categories.map((c) => c.name).join(", ")}\n`);
+    }
     term(`Work Hours: ${profileConfig.workHours.start} - ${profileConfig.workHours.end}\n\n`);
 
     term.green("Setup completed successfully!\n");

@@ -64,6 +64,15 @@ export async function fetchUserEvents(
   );
 }
 
+export async function fetchCategories(accessToken: string) {
+  return await apiCall<CategoriesResponse>(
+    "https://api2.sloneek.com/v2/module-planning/scheduled-events/options/categories",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+}
+
 export async function login(email: string, password: string): Promise<LoginInfo> {
   term.cyan("Logging in...\n");
 

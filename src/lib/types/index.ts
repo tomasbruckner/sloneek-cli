@@ -258,6 +258,15 @@ interface PlanningEventsResponse {
   data: PlanningEventData[];
 }
 
+interface Category {
+  uuid: string;
+  name: string;
+}
+
+interface CategoriesResponse {
+  data: Category[];
+}
+
 interface ApiOptions {
   method?: string;
   headers?: Record<string, string>;
@@ -286,6 +295,10 @@ interface ProfileConfig {
     detail_uuid: string;
     name: string;
   };
+  categories?: {
+    uuid: string;
+    name: string;
+  }[];
   workHours: {
     start: string;
     end: string;
