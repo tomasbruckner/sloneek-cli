@@ -1,6 +1,6 @@
 {
   "name": "sloneek-cli",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "Sloneek CLI for creating your worklogs 100x faster.",
   "main": "index.js",
   "author": "Tomas Bruckner",

@@ -1,7 +1,14 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { getAbsences, getEvents, login } from "../utils/api";
-import { getCurrentDay, getCurrentMonth, getStartDay, isSameDay, isWorkDay } from "../utils/time";
+import {
+  calculateDurationMinutes,
+  getCurrentDay,
+  getCurrentMonth,
+  getStartDay,
+  isSameDay,
+  isWorkDay,
+} from "../utils/time";
 
 export async function listEventsAction(config: ProfileConfig, args: ParsedArgsList): Promise<void> {
   const loginInfo = await login(config.credentials.email, config.credentials.password);
@@ -139,8 +146,39 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     fit: true,
   });
 
+  // Calculate total hours for logs and absences
+  let totalLogMinutes = 0;
+  let totalAbsenceMinutes = 0;
+
+  allEvents.forEach((event) => {
+    const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
+    const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
+    let durationMinutes = calculateDurationMinutes(startTime, endTime);
+
+    // Check if this is a full-day absence by event_type
+    const isFullDay = event.type === "absence" && (event as any).event_type === "full_day";
+
+    // Subtract 30 minutes from full-day absences
+    if (isFullDay) {
+      durationMinutes -= 30;
+    }
+
+    if (event.type === "scheduled") {
+      totalLogMinutes += durationMinutes;
+    } else {
+      totalAbsenceMinutes += durationMinutes;
+    }
+  });
+
+  const logHours = totalLogMinutes / 60;
+  const absenceHours = totalAbsenceMinutes / 60;
+
+  const totalLogHours = Number.isInteger(logHours) ? logHours.toString() : logHours.toFixed(1);
+  const totalAbsenceHours = Number.isInteger(absenceHours) ? absenceHours.toString() : absenceHours.toFixed(1);
+
   term(
-    `\nTotal: ${allEvents.length} events (${scheduledEvents.length} work, ${expandedAbsenceEvents.length} absence)\n`,
+    `\nTotal: ${allEvents.length} events (${scheduledEvents.length} work, ${expandedAbsenceEvents.length} absence)\n` +
+      `Hours: ${totalLogHours}h of logs, ${totalAbsenceHours}h of absences\n`,
   );
 }
 
