@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.9.5] (2025-08-20)
+
+### Added
+- Report: New `--name` (or `-n`) filter to include only users whose name contains the given substring (case-insensitive)
+
+## [1.9.4] (2025-08-20)
+
+### Changed
+- Report: `--summary` table is now sorted by user name
+
+## [1.9.3] (2025-08-20)
+
+### Changed
+- Report: `--summary` now renders a concise per-user totals table with columns: User, Team, Work h, Absence h, Total h (suppresses event listing)
+
+## [1.9.2] (2025-08-20)
+
+### Changed
+- Report: Per-day sum columns are now opt-in via `--summary`. By default, the report shows the simple table without Work/Absence/Total columns
+
+## [1.9.1] (2025-08-20)
+
+### Added
+- Report: Added three per-day total columns in non-validation mode: Work h, Absence h, and Total h (absence handling mirrors list action: ignores in_work and subtracts 30 minutes for full-day absences)
+
+## [1.9.0] (2025-08-20)
+
+### Changed
+- Report: Removed `--planning` argument from the CLI and report implementation
+- Report: Date format in report output changed to `dd.MM.yyyy` (e.g., `31.12.2025`) without weekday
+
+## [1.8.10] (2025-08-20)
+
+### Changed
+- Report: Validation now ignores days where the user has an approved absence (such days are not counted as missing)
+
+## [1.8.9] (2025-08-20)
+
+### Changed
+- Report: Validation output now includes a second column with the total number of missing workdays per user
+
+## [1.8.8] (2025-08-20)
+
+### Changed
+- Report: Default interval is now the full current month instead of current week
+- Report: New `--month` option to select a specific month when `--start/--end` are not provided (e.g., `2025-08`, `8`)
+
+## [1.8.7] (2025-08-20)
+
+### Added
+- Report: new `--ignore-today` option to use with `--validate` that excludes today from validation (validates up to yesterday)
+
+## [1.8.6] (2025-08-20)
+
+### Changed
+- Report: `--validate` still considers only workdays up to today, but output is now grouped by user as "User | Missing days" (no team column)
+
+## [1.8.5] (2025-08-20)
+
+### Changed
+- Report: `--validate` now considers only workdays up to today and renders output grouped by day as "Day | Missing users" (no team column)
+
+## [1.8.4] (2025-08-20)
+
+### Changed
+- Report: `--validate` now suppresses listing events and shows missing workdays (Mon–Fri) per user within the selected interval
+
+## [1.8.3] (2025-08-20)
+
+### Added
+- Report: new `--validate` flag to list users who have not created any scheduled event within the selected interval (respects team and planning filters)
+
+## [1.8.2] (2025-08-20)
+
+### Added
+- Report: allow specifying multiple teams via CLI using a comma-separated list in `--team`
+
+## [1.8.1] (2025-08-20)
+
+### Added
+- Report table now includes Team column
+- New `--team <name>` (or `-t <name>`) option to filter users by team name (substring, case-insensitive)
+
+## [1.8.0] (2025-08-20)
+
+### Added
+- New command `report` which:
+  - Calls GET /v2/module-planning/calendar/options to collect all users
+  - Calls POST /v1/module-planning/scheduled-events-calendar with those users
+  - Displays results in a readable table grouped by date
+  - Supports --start/--end ISO interval and optional --planning filter
+
 ## [1.7.2] (2025-06-20)
 
 ### Added

@@ -117,6 +117,60 @@ export function parseArgs(): ParsedArgs {
     });
 
   program
+    .command("report")
+    .description("Report scheduled events for all users in calendar options")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .option("--start <iso>", "Interval start ISO (e.g., 2025-08-04T00:00:00+02:00)")
+    .option("--end <iso>", "Interval end ISO (e.g., 2025-08-11T00:00:00+02:00)")
+    .option(
+      "-t, --team <team_name>",
+      "Filter users by team name(s) (substring, case-insensitive). Accepts a comma-separated list"
+    )
+    .option(
+      "-n, --name <name>",
+      "Filter users by name (substring, case-insensitive)"
+    )
+    .option(
+      "--validate",
+      "Show users who have no scheduled event in the selected interval (respects filters)"
+    )
+    .option(
+      "--ignore-today",
+      "When used with --validate, exclude today from validation (validate up to yesterday)"
+    )
+    .option(
+      "--month <month>",
+      "Target month to report (e.g., 2025-08, 08, or 8). Applies only when --start/--end are not provided; defaults to current month"
+    )
+    .option(
+      "--summary",
+      "Include per-day summary columns (Work h, Absence h, Total h) in the report table"
+    )
+    .action((options) => {
+      if ((options.start && !options.end) || (!options.start && options.end)) {
+        program.error("Error: both --start and --end must be provided together");
+      }
+
+      // Normalize --team to string[] (comma-separated list supported)
+      const teams: string[] = (options.team ? String(options.team).split(",") : [])
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
+      result = {
+        command: "report",
+        start: options.start,
+        end: options.end,
+        teams: teams.length ? teams : undefined,
+        name: options.name,
+        validate: !!options.validate,
+        ignoreToday: !!options.ignoreToday,
+        month: options.month,
+        summary: !!options.summary,
+        profile: options.profile,
+      } as const;
+    });
+
+  program
     .command("profile")
     .description("Display profile information")
     .option("-r, --profile <profile>", "Show specific profile instead of all profiles")

@@ -168,6 +168,55 @@ sloneek absence-cancel
 
 - `--profile <profile>` (or `-r <profile>`) - Use specific profile instead of the active one
 
+## Reporting scheduled events for all users (report action)
+
+Report scheduled events for all users available in the calendar options. By default, it shows the current month (full month).
+
+The report displays columns: Date, Time, User, Team, Client, Project / Title.
+
+Use --summary to show a concise per-user totals table with columns: User, Team, Work h, Absence h, Total h.
+
+```bash
+# current month for all users
+sloneek report
+
+# per-user totals summary (User, Team, Work h, Absence h, Total h)
+sloneek report --summary
+
+# pick specific month (applies when --start/--end are not used)
+sloneek report --month 2025-08
+sloneek report --month 8      # current year August
+
+# explicit interval
+sloneek report --start "2025-08-04T00:00:00+02:00" --end "2025-08-31T23:59:59+02:00"
+
+
+# filter only specific teams (substring match, case-insensitive)
+sloneek report --team "Dev"
+
+# filter multiple teams (comma-separated)
+sloneek report --team "Dev,Ops"
+
+# filter users whose name contains substring (case-insensitive)
+sloneek report --name "Jaroslav"
+
+# validate (up to today) and show, for each user, which workdays are missing any event (respects filters)
+sloneek report --validate
+```
+
+### Command Line Parameters
+
+#### Optional Parameters
+- `--start <ISO>` - Interval start in ISO format
+- `--end <ISO>` - Interval end in ISO format
+- `--team <team_names>` (or `-t <team_names>`) - Filter users by team name(s), comma-separated list (substring match, case-insensitive)
+- `--name <name>` (or `-n <name>`) - Filter users by name (substring match, case-insensitive)
+- `--month <month>` - Select target month when `--start/--end` are not provided. Accepts `YYYY-MM`, `MM-YYYY`, `MM.YYYY`, or just `M`/`MM` for current year
+- `--validate` - Suppress listing events and show, for each user, which workdays up to today (Mon–Fri) are missing any scheduled event, including the total count of missing days (respects team filters). Days with approved absences are not counted as missing
+- `--summary` - Show a per-user totals table with columns: User, Team, Work h, Absence h, Total h (suppresses the event listing)
+- `--ignore-today` - When used with `--validate`, exclude today from validation (validate up to yesterday)
+- `--profile <profile>` (or `-r <profile>`) - Use specific profile instead of the active one
+
 ## Viewing profiles (profile action)
 
 Display information about your profiles

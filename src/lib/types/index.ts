@@ -10,6 +10,7 @@ type ParsedArgsProfile = {
 type ParsedArgs =
   | ParsedArgsLog
   | ParsedArgsList
+  | ParsedArgsReport
   | ParsedArgsProfile
   | ({
       command: "init";
@@ -39,6 +40,18 @@ type ParsedArgsList = {
   command: "list";
   other: boolean;
   teamPrefix: string;
+} & BaseCommand;
+
+type ParsedArgsReport = {
+  command: "report";
+  start?: string;
+  end?: string;
+  teams?: string[];
+  name?: string;
+  validate?: boolean;
+  ignoreToday?: boolean;
+  month?: string;
+  summary?: boolean;
 } & BaseCommand;
 
 interface Client {
@@ -266,6 +279,21 @@ interface Category {
 
 interface CategoriesResponse {
   data: Category[];
+}
+
+interface CalendarOptionsResponse {
+  data: {
+    users: {
+      team_name: string;
+      team_color?: string | null;
+      users: {
+        uuid?: string; // some responses might use uuid
+        value?: string; // some responses might use value
+        full_name?: string;
+        name?: string;
+      }[];
+    }[];
+  };
 }
 
 interface ApiOptions {

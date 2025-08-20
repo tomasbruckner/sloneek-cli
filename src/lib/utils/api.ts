@@ -73,6 +73,15 @@ export async function fetchCategories(accessToken: string) {
   );
 }
 
+export async function fetchCalendarOptions(accessToken: string) {
+  return await apiCall<CalendarOptionsResponse>(
+    "https://api2.sloneek.com/v2/module-planning/calendar/options",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+}
+
 export async function login(email: string, password: string): Promise<LoginInfo> {
   const loginResponse = await apiCall<LoginResponse>(
     "https://api2.sloneek.com/auth/login",
