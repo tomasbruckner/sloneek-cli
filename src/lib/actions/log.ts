@@ -1,18 +1,19 @@
-import { createEvent, getClients, login } from "../utils/api";
+import { createEvent, getClients } from "../utils/api";
 import { terminal as term } from "terminal-kit";
+import { authenticate } from "../utils/login";
 import { calculateDurationMinutes, createDateTimeForSpecificDay, createDateTimeForToday } from "../utils/time";
 import { DateTime } from "luxon";
 
 export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog) {
-  const { message, interactiveClient, interactiveProject, day, yesterday } = args;
+  const { message, interactiveClient, interactiveProject, day, yesterday, profile } = args;
 
-  const loginInfo = await login(config.credentials.email, config.credentials.password);
+  const accessToken = await authenticate(profile);
 
   let clientUuid: string, clientDisplayName: string, projectUuid: string, projectDisplayName: string;
 
   if (interactiveClient || interactiveProject) {
     const { selectedClient, selectedProject } = await interactiveClientProjectSelection(
-      loginInfo.access_token,
+      accessToken,
       config.user.uuid,
       config,
       interactiveClient,
@@ -82,7 +83,7 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
       client_project: projectUuid,
       user_uuid: config.user.uuid,
     },
-    loginInfo.access_token,
+    accessToken,
     {
       user: config.user.name,
       clientDisplayName,

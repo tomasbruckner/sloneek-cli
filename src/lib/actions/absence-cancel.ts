@@ -1,10 +1,11 @@
 import { terminal as term } from "terminal-kit";
-import { fetchCancelAbsence, getAbsences, login } from "../utils/api";
+import { fetchCancelAbsence, getAbsences } from "../utils/api";
+import { authenticate } from "../utils/login";
 import { getTodayToEndOfYear } from "../utils/time";
 import { DateTime } from "luxon";
 
-export async function absenceCancelAction(config: ProfileConfig) {
-  const loginInfo = await login(config.credentials.email, config.credentials.password);
+export async function absenceCancelAction(config: ProfileConfig, args?: BaseCommand) {
+  const accessToken = await authenticate(args?.profile);
 
   const { isoStart, isoEnd } = getTodayToEndOfYear();
 
@@ -15,7 +16,7 @@ export async function absenceCancelAction(config: ProfileConfig) {
       users_uuids: [config.user.uuid],
       quick_filter: null,
     },
-    loginInfo.access_token,
+    accessToken,
   );
 
   const absences = (absenceResponse.data?.events || []).sort(
@@ -55,7 +56,7 @@ export async function absenceCancelAction(config: ProfileConfig) {
     return;
   }
 
-  await fetchCancelAbsence(loginInfo.access_token, selectedAbsence.uuid);
+  await fetchCancelAbsence(accessToken, selectedAbsence.uuid);
 
   term.green("✓ Absence cancelled successfully\n\n");
 }

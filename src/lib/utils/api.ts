@@ -74,8 +74,6 @@ export async function fetchCategories(accessToken: string) {
 }
 
 export async function login(email: string, password: string): Promise<LoginInfo> {
-  term.cyan("Logging in...\n");
-
   const loginResponse = await apiCall<LoginResponse>(
     "https://api2.sloneek.com/auth/login",
     {

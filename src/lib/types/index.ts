@@ -211,6 +211,7 @@ interface LoginResponse {
 
 interface LoginInfo {
   access_token: string;
+  access_token_expires_at: number;
   user: {
     team: {
       name: string;
@@ -277,6 +278,10 @@ interface ProfileConfig {
   credentials: {
     email: string;
     password: string;
+  };
+  token?: {
+    access_token: string;
+    expires_at: string;
   };
   user: {
     uuid: string;

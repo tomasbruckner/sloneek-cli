@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { getAbsences, getEvents, login } from "../utils/api";
+import { getAbsences, getEvents } from "../utils/api";
+import { authenticate } from "../utils/login";
 import {
   calculateDurationMinutes,
   getCurrentDay,
@@ -11,14 +12,14 @@ import {
 } from "../utils/time";
 
 export async function listEventsAction(config: ProfileConfig, args: ParsedArgsList): Promise<void> {
-  const loginInfo = await login(config.credentials.email, config.credentials.password);
+  const accessToken = await authenticate(args.profile);
 
   if (args.other) {
-    await showOtherUsers(loginInfo, args.teamPrefix);
+    await showOtherUsers(accessToken, args.teamPrefix);
     return;
   }
 
-  await showCurrentUser(config, loginInfo.access_token);
+  await showCurrentUser(config, accessToken);
 }
 
 async function showCurrentUser(config: ProfileConfig, accessToken: string) {
@@ -182,7 +183,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
   );
 }
 
-async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
+async function showOtherUsers(accessToken: string, teamPrefix: string) {
   const { isoStart, isoEnd } = getCurrentDay();
 
   const allEvents = (
@@ -193,7 +194,7 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
           interval_ending_at: isoEnd,
           quick_filter: null,
         },
-        loginInfo.access_token,
+        accessToken,
       )
     ).data.events ?? []
   )

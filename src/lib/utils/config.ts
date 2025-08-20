@@ -3,11 +3,13 @@ import { promises as fs } from "fs";
 import os from "os";
 import { terminal as term } from "terminal-kit";
 
-export async function readConfig(): Promise<Config> {
+export async function readConfig(silent: boolean = false): Promise<Config> {
   try {
     const configDir = path.join(os.homedir(), ".sloneek");
     const configPath = path.join(configDir, "config.json");
-    term.cyan(`Reading config from ${configPath} \n`);
+    if (!silent) {
+      term.cyan(`Reading config from ${configPath} \n`);
+    }
     const configData = await fs.readFile(configPath, "utf8");
 
     const parsedConfig = JSON.parse(configData);
@@ -38,10 +40,12 @@ export async function readConfig(): Promise<Config> {
   }
 }
 
-export async function writeConfig(config: Config) {
+export async function writeConfig(config: Config, silent: boolean = false) {
   const configDir = path.join(os.homedir(), ".sloneek");
   const configPath = path.join(configDir, "config.json");
-  term.cyan(`Writing config to ${configPath} \n`);
+  if (!silent) {
+    term.cyan(`Writing config to ${configPath} \n`);
+  }
 
   await fs.mkdir(configDir, { recursive: true });
   await fs.writeFile(configPath, JSON.stringify(config, null, 2));
@@ -59,16 +63,20 @@ export async function configExists(): Promise<boolean> {
   }
 }
 
-export async function getProfileConfig(config: Config, profileName?: string): Promise<ProfileConfig> {
+export async function getProfileConfig(config: Config, profileName?: string, silent: boolean = false): Promise<ProfileConfig> {
   if (Object.keys(config.profiles).length === 0) {
     throw new Error("No profiles found. Please run 'sloneek init' to create a profile.");
   }
 
   if (profileName && config.profiles[profileName]) {
-    term.cyan(`Using profile: ${profileName}\n`);
+    if (!silent) {
+      term.cyan(`Using profile: ${profileName}\n`);
+    }
     return config.profiles[profileName];
   }
 
-  term.cyan(`Using default profile\n`);
+  if (!silent) {
+    term.cyan(`Using default profile\n`);
+  }
   return config.profiles["_default"];
 }

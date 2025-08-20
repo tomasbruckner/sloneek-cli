@@ -1,10 +1,11 @@
-import { fetchAbsenceOptions, fetchCreateAbsence, login } from "../utils/api";
+import { fetchAbsenceOptions, fetchCreateAbsence } from "../utils/api";
 import { terminal as term } from "terminal-kit";
+import { authenticate } from "../utils/login";
 import { convertDayAndTimeToIso, convertDayToISO, getTodayFormatted } from "../utils/time";
 
-export async function createAbsenceAction(config: ProfileConfig) {
-  const loginInfo = await login(config.credentials.email, config.credentials.password);
-  const selected = await chooseAbsenceOptions(loginInfo.access_token);
+export async function createAbsenceAction(config: ProfileConfig, args?: BaseCommand) {
+  const accessToken = await authenticate(args?.profile);
+  const selected = await chooseAbsenceOptions(accessToken);
   term.green(`✓ Using absence: ${selected.absence_event.display_name}\n\n`);
 
   term("Absence message: ");
@@ -12,11 +13,11 @@ export async function createAbsenceAction(config: ProfileConfig) {
   term("\n");
 
   if (selected.absence_event.unit_type === "days") {
-    await chooseFullDayAbsence(loginInfo.access_token, message, selected);
+    await chooseFullDayAbsence(accessToken, message, selected);
   } else if (selected.absence_event.unit_type === "hours") {
-    await chooseHoursAbsence(loginInfo.access_token, message, selected);
+    await chooseHoursAbsence(accessToken, message, selected);
   } else if (selected.absence_event.unit_type === "days_and_half_days") {
-    await chooseHalfDayAbsence(loginInfo.access_token, message, selected);
+    await chooseHalfDayAbsence(accessToken, message, selected);
   } else {
     throw new Error("Unknow type " + selected.absence_event.unit_type);
   }
