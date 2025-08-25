@@ -217,6 +217,31 @@ sloneek report --validate
 - `--ignore-today` - When used with `--validate`, exclude today from validation (validate up to yesterday)
 - `--profile <profile>` (or `-r <profile>`) - Use specific profile instead of the active one
 
+## Reporting one user's monthly details (report-detail action)
+
+List one user's scheduled events and absences for the current month. Notes are fetched from the detail endpoints and rendered without truncation, allowing multiline content. The table shows: Date, Time, Type, Project/Absence, Note.
+
+Usage examples:
+
+```bash
+# Pick the user interactively (multi-column name list)
+sloneek report-detail
+
+# Filter users by substring (name or UUID)
+# - if exactly one user matches, it auto-selects
+# - if multiple match, you'll select from the filtered list
+# - if none match, it errors
+sloneek report-detail --user "john"
+```
+
+Options:
+- `--user <name|uuid>` (or `-u <name|uuid>`) — Optional substring to filter users by name or UUID. If omitted, you'll choose interactively.
+- `--profile <profile>` (or `-r <profile>`) — Use a specific profile.
+
+What is displayed:
+- For scheduled events: project name is shown in Project/Absence column; notes come from `data.scheduled_event_data.note`.
+- For absences: absence event name is shown; notes come from `data.absence_data.note`.
+
 ## Viewing profiles (profile action)
 
 Display information about your profiles

@@ -12,6 +12,7 @@ type ParsedArgs =
   | ParsedArgsList
   | ParsedArgsReport
   | ParsedArgsProfile
+  | ParsedArgsReportDetail
   | ({
       command: "init";
     } & BaseCommand)
@@ -39,7 +40,7 @@ type ParsedArgsLog = {
 type ParsedArgsList = {
   command: "list";
   other: boolean;
-  teamPrefix: string;
+  teamPrefixes?: string[];
 } & BaseCommand;
 
 type ParsedArgsReport = {
@@ -52,6 +53,11 @@ type ParsedArgsReport = {
   ignoreToday?: boolean;
   month?: string;
   summary?: boolean;
+} & BaseCommand;
+
+type ParsedArgsReportDetail = {
+  command: "report-detail";
+  user?: string;
 } & BaseCommand;
 
 interface Client {
@@ -291,6 +297,17 @@ interface CalendarOptionsResponse {
         value?: string; // some responses might use value
         full_name?: string;
         name?: string;
+      }[];
+    }[];
+  };
+}
+
+interface AbsenceReportCalendarOptionsResponse {
+  data: {
+    users_select?: {
+      users?: {
+        uuid: string;
+        full_name?: string;
       }[];
     }[];
   };

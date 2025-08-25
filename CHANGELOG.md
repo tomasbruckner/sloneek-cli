@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] (2025-08-25)
+
+### Added
+- New `report-detail` command to list one user's scheduled events and absences for the current month
+- Interactive user picker using multi-column grid; shows only user names; names are sorted alphabetically
+- Event/absence detail fetching with notes preserved as multiline (no truncation)
+- Shows project name for scheduled events and absence event name for absences
+
+### Changed
+- `--user` parameter on `report-detail` filters by substring (UUID or name). If exactly one match remains, it auto-selects; if multiple, it opens the filtered picker; if none, it errors
+
 ## [1.9.5] (2025-08-20)
 
 ### Added

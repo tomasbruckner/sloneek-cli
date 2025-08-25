@@ -11,6 +11,7 @@ import { absenceCancelAction } from "./actions/absence-cancel";
 import { logCancelAction } from "./actions/log-cancel";
 import { profileAction } from "./actions/profile";
 import { reportAction } from "./actions/report";
+import { reportDetailAction } from "./actions/report-detail";
 
 export async function main(): Promise<void> {
   try {
@@ -41,6 +42,8 @@ export async function main(): Promise<void> {
       await logCancelAction(profileConfig);
     } else if (args.command === "report") {
       await reportAction(profileConfig, args as any);
+    } else if (args.command === "report-detail") {
+      await reportDetailAction(profileConfig, args as any);
     } else {
       throw new Error("Invalid command");
     }

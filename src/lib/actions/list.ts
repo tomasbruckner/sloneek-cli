@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { getAbsences, getEvents } from "../utils/api";
+import { getAbsences, getEvents, fetchAbsenceReportCalendarOptions } from "../utils/api";
 import { authenticate } from "../utils/login";
 import {
   calculateDurationMinutes,
@@ -15,7 +15,7 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
   const accessToken = await authenticate(args.profile);
 
   if (args.other) {
-    await showOtherUsers(accessToken, args.teamPrefix);
+    await showOtherUsers(accessToken, args.teamPrefixes);
     return;
   }
 
@@ -183,8 +183,19 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
   );
 }
 
-async function showOtherUsers(accessToken: string, teamPrefix: string) {
+async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
   const { isoStart, isoEnd } = getCurrentDay();
+
+  // Fetch absence report calendar options to get all users UUIDs
+  const absCalOpts = await fetchAbsenceReportCalendarOptions(accessToken);
+  const usersUuids: string[] = [];
+  for (const group of absCalOpts?.data?.users_select ?? []) {
+    for (const u of group.users ?? []) {
+      if (u?.uuid) usersUuids.push(u.uuid);
+    }
+  }
+
+  const filtersLc = (teamPrefixes || []).map((s) => s.toLowerCase());
 
   const allEvents = (
     (
@@ -192,13 +203,20 @@ async function showOtherUsers(accessToken: string, teamPrefix: string) {
         {
           interval_starting_at: isoStart,
           interval_ending_at: isoEnd,
+          users_uuids: usersUuids,
           quick_filter: null,
         },
         accessToken,
       )
     ).data.events ?? []
   )
-    .filter((x) => !x.user?.team?.name || x.user.team.name.includes(teamPrefix))
+    .filter((x) => {
+      const teamName = x.user?.team?.name;
+      if (!teamName) return true; // keep users without a team
+      if (filtersLc.length === 0) return true; // no filters => include all
+      const teamLc = teamName.toLowerCase();
+      return filtersLc.some((f) => teamLc.includes(f));
+    })
     .sort((a, b) => a.user.full_name.localeCompare(b.user.full_name));
 
   if (allEvents.length === 0) {
@@ -207,17 +225,16 @@ async function showOtherUsers(accessToken: string, teamPrefix: string) {
   }
 
   // Create a table with headers
-  const headers = ["Who", "Team", "Type", "Date", "Time", "Ends"];
+  const headers = ["Who", "Team", "Type", "From", "Today", "Ends"];
 
   // Create table data
   const tableData = [headers];
-
-  const date = DateTime.fromISO(isoStart).toFormat("dd.MM.yyyy ccc");
 
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
 
+    const startDateFormatted = startTime.toFormat("dd.MM.yyyy ccc");
     const timeRange = `${startTime.toFormat("HH:mm")}-${endTime.toFormat("HH:mm")}`;
 
     const today = DateTime.now().setZone("Europe/Prague").startOf("day");
@@ -233,7 +250,7 @@ async function showOtherUsers(accessToken: string, teamPrefix: string) {
       event.user.full_name,
       event.user?.team?.name ?? "-",
       event.user_absence_event.absence_event_name,
-      date,
+      startDateFormatted,
       timeRange,
       endDateFormatted,
     ]);

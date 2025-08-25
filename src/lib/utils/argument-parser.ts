@@ -103,15 +103,20 @@ export function parseArgs(): ParsedArgs {
     )
     .option(
       "-t, --team-prefix <team_name>",
-      "Filter absences only for specific team. With conjuction with --other parameter"
+      "Filter absences by team name(s) (substring, case-insensitive). Accepts a comma-separated list; used with --other"
     )
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
+      // Normalize --team-prefix to string[] (comma-separated list supported)
+      const teamPrefixes: string[] = (option.teamPrefix ? String(option.teamPrefix).split(",") : [])
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
       result = { 
         command: "list", 
         other: !!option.other, 
-        teamPrefix: option.teamPrefix ?? '',
+        teamPrefixes: teamPrefixes.length ? teamPrefixes : undefined,
         profile: option.profile
       } as const;
     });
@@ -166,6 +171,19 @@ export function parseArgs(): ParsedArgs {
         ignoreToday: !!options.ignoreToday,
         month: options.month,
         summary: !!options.summary,
+        profile: options.profile,
+      } as const;
+    });
+
+  program
+    .command("report-detail")
+    .description("Report one user's events and absences for the current month with notes")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .option("-u, --user <name|uuid>", "User name or UUID (substring match); if omitted, choose interactively")
+    .action((options) => {
+      result = {
+        command: "report-detail",
+        user: options.user,
         profile: options.profile,
       } as const;
     });

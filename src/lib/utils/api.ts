@@ -82,6 +82,15 @@ export async function fetchCalendarOptions(accessToken: string) {
   );
 }
 
+export async function fetchAbsenceReportCalendarOptions(accessToken: string) {
+  return await apiCall<AbsenceReportCalendarOptionsResponse>(
+    "https://api2.sloneek.com/v2/module-absence/absence/report/calendar-options",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+}
+
 export async function login(email: string, password: string): Promise<LoginInfo> {
   const loginResponse = await apiCall<LoginResponse>(
     "https://api2.sloneek.com/auth/login",
@@ -181,6 +190,29 @@ export async function fetchAbsenceOptions(accessToken: string) {
   );
 }
 
+export async function fetchScheduledEventDetail(accessToken: string, eventUuid: string) {
+  return apiCall<any>(
+    `https://api2.sloneek.com/v2/module-planning/scheduled-events/${eventUuid}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+}
+
+export async function fetchAbsenceDetail(accessToken: string, absenceUuid: string) {
+  return apiCall<any>(
+    `https://api2.sloneek.com/v2/module-absence/absence/absence/${absenceUuid}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+}
 
 export async function fetchCreateAbsence(accessToken: string, payload: AbsencePayload) {
   console.log("Creating absence...");
