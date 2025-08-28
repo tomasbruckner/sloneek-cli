@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] (2025-08-28)
+
+### Changed
+- list: Added per-day Total column formatted as decimal hours (e.g., 8.5 hours) shown only on the first row per day.
+- report-detail: Added per-day Total column and switched formatting to decimal hours, shown only on the first row per day.
+
 ## [1.10.0] (2025-08-25)
 
 ### Added
@@ -164,6 +170,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.10.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.0...v1.10.1
+[1.10.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.9.5...v1.10.0
 [1.7.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.6.1...v1.7.0

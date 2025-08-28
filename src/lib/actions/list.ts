@@ -113,12 +113,34 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
   }
 
   // Create a table with headers
-  const headers = ["Date", "Time", "Type", "Client/Absence", "Project/Details"];
+  const headers = ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
 
   // Create table data
   const tableData = [headers];
 
+  // Compute total minutes per day with the same logic as monthly totals
+  const totalMinutesByDate: Record<string, number> = {};
+  allEvents.forEach((event) => {
+    const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
+    const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
+    let durationMinutes = calculateDurationMinutes(startTime, endTime);
+
+    // Apply the same 30-minute deduction for full-day absences
+    const isFullDay = event.type === "absence" && (event as any).event_type === "full_day";
+    if (isFullDay) {
+      durationMinutes -= 30;
+    }
+
+    const dateKey = startTime.toFormat("dd.MM.yyyy ccc");
+    totalMinutesByDate[dateKey] = (totalMinutesByDate[dateKey] || 0) + Math.max(0, durationMinutes);
+  });
+
   const visited: Record<string, boolean> = {};
+  const fmtHours = (mins: number) => {
+    const hours = mins / 60;
+    return Number.isInteger(hours) ? `${hours} hours` : `${hours.toFixed(1)} hours`;
+  };
+
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
@@ -133,7 +155,9 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     const truncatedProject =
       event.displayProject.length > 25 ? event.displayProject.substring(0, 22) + "..." : event.displayProject;
 
-    tableData.push([visited[date] ? "" : date, timeRange, typeIndicator, truncatedClient, truncatedProject]);
+    const totalForDay = visited[date] ? "" : fmtHours(totalMinutesByDate[date] || 0);
+
+    tableData.push([visited[date] ? "" : date, totalForDay, timeRange, typeIndicator, truncatedClient, truncatedProject]);
 
     visited[date] = true;
   });

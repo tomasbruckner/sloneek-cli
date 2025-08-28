@@ -153,8 +153,24 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     }),
   );
 
-  const headers = ["Date", "Time", "Type", "Project/Absence", "Note"];
+  const headers = ["Date", "Total", "Time", "Type", "Project/Absence", "Note"];
   const rows: string[][] = [headers];
+
+  // Compute total minutes per day (keyed by the same formatted date string used in the table)
+  const totalMinutesByDate: Record<string, number> = {};
+  for (const item of all) {
+    const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
+    const e = DateTime.fromISO(item.ended_at).setZone("Europe/Prague");
+    const dateKey = s.toFormat("dd.MM.yyyy ccc");
+    const minutes = Math.max(0, Math.round(e.diff(s, "minutes").minutes));
+    totalMinutesByDate[dateKey] = (totalMinutesByDate[dateKey] || 0) + minutes;
+  }
+
+  const seenDates = new Set<string>();
+  const fmtTotal = (mins: number) => {
+    const hours = mins / 60;
+    return Number.isInteger(hours) ? `${hours} hours` : `${hours.toFixed(1)} hours`;
+  };
 
   for (const item of all) {
     const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
@@ -165,7 +181,11 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     // Preserve original note including newlines; normalize CRLF to LF
     const rawNote = String(notesMap[item.uuid] ?? "").replace(/\r\n/g, "\n");
     const info = String(infoMap[item.uuid] ?? "");
-    rows.push([date, time, type, info, rawNote]);
+
+    const totalForDay = !seenDates.has(date) ? fmtTotal(totalMinutesByDate[date] || 0) : "";
+    seenDates.add(date);
+
+    rows.push([date, totalForDay, time, type, info, rawNote]);
   }
 
   term.table(rows, {
