@@ -41,6 +41,7 @@ type ParsedArgsList = {
   command: "list";
   other: boolean;
   teamPrefixes?: string[];
+  client?: string;
 } & BaseCommand;
 
 type ParsedArgsReport = {
@@ -58,6 +59,7 @@ type ParsedArgsReport = {
 type ParsedArgsReportDetail = {
   command: "report-detail";
   user?: string;
+  month?: string;
 } & BaseCommand;
 
 interface Client {

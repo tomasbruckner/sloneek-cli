@@ -19,10 +19,10 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
     return;
   }
 
-  await showCurrentUser(config, accessToken);
+  await showCurrentUser(config, accessToken, args);
 }
 
-async function showCurrentUser(config: ProfileConfig, accessToken: string) {
+async function showCurrentUser(config: ProfileConfig, accessToken: string, args?: ParsedArgsList) {
   const { now, isoStart, isoEnd } = getCurrentMonth();
 
   console.log(`Fetching events for ${now.toFormat("MMMM yyyy")}...`);
@@ -49,7 +49,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     ),
   ]);
 
-  const scheduledEvents: ScheduledEvent[] = (scheduledResponse.data?.events || []).map(
+  let scheduledEvents: ScheduledEvent[] = (scheduledResponse.data?.events || []).map(
     (event: any): ScheduledEvent => ({
       ...event,
       type: "scheduled",
@@ -58,6 +58,12 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
       displayType: "Work",
     }),
   );
+
+  // If --client is provided, filter only scheduled events for matching client name (case-insensitive)
+  const clientFilter = args?.client?.toLowerCase().trim();
+  if (clientFilter) {
+    scheduledEvents = scheduledEvents.filter((ev) => (ev.client?.name || ev.displayClient || "").toLowerCase().includes(clientFilter));
+  }
 
   const expandedAbsenceEvents: AbsenceEvent[] = [];
 
@@ -103,7 +109,10 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     }
   });
 
-  const allEvents: ApiEvent[] = [...scheduledEvents, ...expandedAbsenceEvents].sort((a, b) => {
+  // Build final events list; when client filter is active, we only display scheduled (work) events
+  const allEvents: ApiEvent[] = (
+    clientFilter ? scheduledEvents : [...scheduledEvents, ...expandedAbsenceEvents]
+  ).sort((a, b) => {
     return new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
   });
 

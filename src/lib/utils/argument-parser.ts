@@ -102,14 +102,16 @@ export function parseArgs(): ParsedArgs {
       "Show absences and events for other users in your team for current day"
     )
     .option(
-      "-t, --team-prefix <team_name>",
+      "-t, --team <team_name>",
       "Filter absences by team name(s) (substring, case-insensitive). Accepts a comma-separated list; used with --other"
     )
+    .option("-c, --client <client_name>", "Filter own events by Client name (substring, case-insensitive)")
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
-      // Normalize --team-prefix to string[] (comma-separated list supported)
-      const teamPrefixes: string[] = (option.teamPrefix ? String(option.teamPrefix).split(",") : [])
+      // Normalize --team (new) or --team-prefix (legacy) to string[] (comma-separated list supported)
+      const rawTeam = option.team ?? (option as any).teamPrefix; // keep backward compatibility
+      const teamPrefixes: string[] = (rawTeam ? String(rawTeam).split(",") : [])
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
@@ -117,6 +119,7 @@ export function parseArgs(): ParsedArgs {
         command: "list", 
         other: !!option.other, 
         teamPrefixes: teamPrefixes.length ? teamPrefixes : undefined,
+        client: option.client,
         profile: option.profile
       } as const;
     });
@@ -177,13 +180,16 @@ export function parseArgs(): ParsedArgs {
 
   program
     .command("report-detail")
-    .description("Report one user's events and absences for the current month with notes")
+    .description("Report one user's events and absences for a month with notes")
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .option("-u, --user <name|uuid>", "User name or UUID (substring match); if omitted, choose interactively")
+    .option("-n, --name <name|uuid>", "Alias for --user: user name or UUID (substring match)")
+    .option("--month <month>", "Target month (e.g., 2025-08, 08, or 8). Defaults to current month")
     .action((options) => {
       result = {
         command: "report-detail",
-        user: options.user,
+        user: options.user ?? options.name,
+        month: options.month,
         profile: options.profile,
       } as const;
     });

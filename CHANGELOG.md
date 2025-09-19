@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.10.3] (2025-08-30)
+
+### Changed
+- list: CLI option renamed from `--team-prefix` to `--team` (substring match, case-insensitive). Backward compatible with the legacy flag.
+- report-detail: Added `--month` option to select a specific month; table now includes per-day Total column.
+- README: Updated docs for list/team and report-detail month option.
+
+## [1.10.2] (2025-08-30)
+
+### Added
+- list: New `--client` (`-c`) option to filter own work events by Client name (substring, case-insensitive). When used, absences are hidden from the list to show only matching work entries.
+- report-detail: Added `--name` (`-n`) as an alias for `--user`.
+
 ## [1.10.1] (2025-08-28)
 
 ### Changed
@@ -170,6 +183,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.10.3]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.2...v1.10.3
+[1.10.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.9.5...v1.10.0
 [1.7.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.7.1...v1.7.2

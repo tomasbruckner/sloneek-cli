@@ -8,7 +8,47 @@ import {
   fetchAbsenceDetail,
   fetchScheduledEventDetail,
 } from "../utils/api";
-import { getCurrentMonth } from "../utils/time";
+
+function getMonthRangePrague(monthArg?: string) {
+  const tz = "Europe/Prague";
+  let year: number | undefined;
+  let month: number | undefined;
+
+  if (monthArg && typeof monthArg === "string") {
+    const m = monthArg.trim();
+    // Patterns: YYYY-MM
+    let match = m.match(/^(\d{4})[-\/]?(\d{1,2})$/);
+    if (match) {
+      year = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
+    }
+    // Patterns: MM.YYYY or M.YYYY or MM-YYYY
+    if (!month) {
+      match = m.match(/^(\d{1,2})[.\/-](\d{4})$/);
+      if (match) {
+        month = parseInt(match[1], 10);
+        year = parseInt(match[2], 10);
+      }
+    }
+    // Patterns: M or MM (current year)
+    if (!month && /^\d{1,2}$/.test(m)) {
+      month = parseInt(m, 10);
+    }
+  }
+
+  const now = DateTime.now().setZone(tz);
+  if (!year) year = now.year;
+  if (!month || month < 1 || month > 12) month = now.month;
+
+  const start = DateTime.fromObject({ year, month, day: 1 }, { zone: tz }).startOf("day");
+  const end = start.endOf("month").startOf("second");
+
+  return {
+    isoStart: start.toISO({ suppressMilliseconds: true }) ?? "",
+    isoEnd: end.toISO({ suppressMilliseconds: true }) ?? "",
+    monthStart: start,
+  };
+}
 
 export async function reportDetailAction(_config: ProfileConfig, args: ParsedArgsReportDetail): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -79,8 +119,8 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
 
   term.green(`User selected: ${user.name} (${user.uuid})${user.team ? " – " + user.team : ""}\n`);
 
-  const { isoStart, isoEnd, now } = getCurrentMonth();
-  term.cyan(`Fetching events and absences for ${now.toFormat("MMMM yyyy")}...\n`);
+  const { isoStart, isoEnd, monthStart } = getMonthRangePrague(args.month);
+  term.cyan(`Fetching events and absences for ${monthStart.toFormat("MMMM yyyy")}...\n`);
 
   const [evResp, abResp] = await Promise.all([
     getEvents(
@@ -122,7 +162,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
   const all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
 
   if (all.length === 0) {
-    term.red("No events or absences found for the current month.\n");
+    term.red("No events or absences found for the selected month.\n");
     return;
   }
 

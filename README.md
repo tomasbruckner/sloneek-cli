@@ -116,6 +116,13 @@ List what you logged for current month
 sloneek list
 ```
 
+Filter your own work events by Client name (absences are hidden when filtering)
+
+```bash
+# show only your work events for a specific client (case-insensitive substring match)
+sloneek list --client "Acme"
+```
+
 List your teammates absences for current day
 
 ```bash
@@ -134,8 +141,9 @@ sloneek list --other --team SuperTeam
 
 #### Optional Parameters
 
-- `--other` (or `-o`) - Lists other users absences
-- `--team substring` (or `-t substring`) - used only together with `--other` to filter users that you are interested in by their team
+- `--other` (or `-o`) - Lists other users' absences (current day)
+- `--team <team_name>` (or `-t <team_name>`) - Used only together with `--other` to filter users by their team name (substring, case-insensitive). Accepts a comma-separated list
+- `--client <client_name>` (or `-c <client_name>`) - Filter your own work events by Client name (substring, case-insensitive). When used, absences are hidden from the list
 - `--profile <profile>` (or `-r <profile>`) - Use specific profile instead of the active one
 
 ## Creating absences (absence action)
@@ -219,13 +227,17 @@ sloneek report --validate
 
 ## Reporting one user's monthly details (report-detail action)
 
-List one user's scheduled events and absences for the current month. Notes are fetched from the detail endpoints and rendered without truncation, allowing multiline content. The table shows: Date, Time, Type, Project/Absence, Note.
+List one user's scheduled events and absences for a selected month. Notes are fetched from the detail endpoints and rendered without truncation, allowing multiline content. The table shows: Date, Total, Time, Type, Project/Absence, Note.
 
 Usage examples:
 
 ```bash
-# Pick the user interactively (multi-column name list)
+# Pick the user interactively (multi-column name list) for the current month
 sloneek report-detail
+
+# Pick a specific month
+sloneek report-detail --month 2025-08
+sloneek report-detail --month 8    # current year August
 
 # Filter users by substring (name or UUID)
 # - if exactly one user matches, it auto-selects
@@ -235,7 +247,8 @@ sloneek report-detail --user "john"
 ```
 
 Options:
-- `--user <name|uuid>` (or `-u <name|uuid>`) — Optional substring to filter users by name or UUID. If omitted, you'll choose interactively.
+- `--user <name|uuid>` (or `-u <name|uuid>`, or `--name <name|uuid>`) — Optional substring to filter users by name or UUID. If omitted, you'll choose interactively.
+- `--month <month>` — Target month (e.g., `2025-08`, `08`, or `8`). Defaults to current month.
 - `--profile <profile>` (or `-r <profile>`) — Use a specific profile.
 
 What is displayed:
