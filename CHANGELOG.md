@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.10.4] (2025-09-19)
+
+### Fixed
+- report-detail: Sum of hours and overall totals now match the logic used in the `list` action (uses calculateDurationMinutes and subtracts 30 minutes for full-day absences). Also includes counts of work vs absence events in the summary.
+
 ## [1.10.3] (2025-08-30)
 
 ### Changed
@@ -183,6 +188,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.10.4]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.2...v1.10.3
 [1.10.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.0...v1.10.1

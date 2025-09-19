@@ -8,6 +8,7 @@ import {
   fetchAbsenceDetail,
   fetchScheduledEventDetail,
 } from "../utils/api";
+import { calculateDurationMinutes } from "../utils/time";
 
 function getMonthRangePrague(monthArg?: string) {
   const tz = "Europe/Prague";
@@ -157,6 +158,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
       uuid: a.uuid as string,
       started_at: a.started_at as string,
       ended_at: a.ended_at as string,
+      event_type: (a as any).event_type as "full_day" | "half_day" | undefined,
     }));
 
   const all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
@@ -202,8 +204,13 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
     const e = DateTime.fromISO(item.ended_at).setZone("Europe/Prague");
     const dateKey = s.toFormat("dd.MM.yyyy ccc");
-    const minutes = Math.max(0, Math.round(e.diff(s, "minutes").minutes));
-    totalMinutesByDate[dateKey] = (totalMinutesByDate[dateKey] || 0) + minutes;
+    let minutes = calculateDurationMinutes(s, e);
+    // Apply the same 30-minute deduction for full-day absences as in list action
+    const isFullDayAbsence = (item as any).kind === "absence" && (item as any).event_type === "full_day";
+    if (isFullDayAbsence) {
+      minutes -= 30;
+    }
+    totalMinutesByDate[dateKey] = (totalMinutesByDate[dateKey] || 0) + Math.max(0, minutes);
   }
 
   const seenDates = new Set<string>();
@@ -235,5 +242,29 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     // Use terminal default width; allow multiline notes without our own truncation
     fit: true,
   });
+
+  // Calculate total hours for logs and absences (same logic as list action)
+  let totalLogMinutes = 0;
+  let totalAbsenceMinutes = 0;
+  for (const item of all) {
+    const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
+    const e = DateTime.fromISO(item.ended_at).setZone("Europe/Prague");
+    let minutes = calculateDurationMinutes(s, e);
+    const isFullDayAbsence = (item as any).kind === "absence" && (item as any).event_type === "full_day";
+    if (isFullDayAbsence) {
+      minutes -= 30;
+    }
+    if ((item as any).kind === "scheduled") totalLogMinutes += minutes; else totalAbsenceMinutes += minutes;
+  }
+
+  const logHours = totalLogMinutes / 60;
+  const absenceHours = totalAbsenceMinutes / 60;
+  const totalLogHours = Number.isInteger(logHours) ? logHours.toString() : logHours.toFixed(1);
+  const totalAbsenceHours = Number.isInteger(absenceHours) ? absenceHours.toString() : absenceHours.toFixed(1);
+
+  term(
+    `\nTotal: ${all.length} events (${sched.length} work, ${abs.length} absence)\n` +
+      `Hours: ${totalLogHours}h of logs, ${totalAbsenceHours}h of absences\n`
+  );
   term("\n");
 }
