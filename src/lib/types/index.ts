@@ -13,6 +13,7 @@ type ParsedArgs =
   | ParsedArgsReport
   | ParsedArgsProfile
   | ParsedArgsReportDetail
+  | ParsedArgsTeamReport
   | ({
       command: "init";
     } & BaseCommand)
@@ -60,6 +61,15 @@ type ParsedArgsReportDetail = {
   command: "report-detail";
   user?: string;
   month?: string;
+} & BaseCommand;
+
+// New team-report parsed args
+ type ParsedArgsTeamReport = {
+  command: "team-report";
+  client?: string; // optional client name substring; if omitted, select interactively
+  projects?: string[]; // optional list of project name substrings; if omitted, select interactively
+  month?: string; // e.g., "9.2025", "09.2025", "2025-09" etc.
+  previousMonth?: boolean;
 } & BaseCommand;
 
 interface Client {

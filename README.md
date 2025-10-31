@@ -227,6 +227,40 @@ sloneek report --validate
 
 ## Reporting one user's monthly details (report-detail action)
 
+## Team projects monthly summary (team-report action)
+
+Sum logged hours across all users for specified projects in a given month. By default, it uses the current month. You can also target a specific month in format "9.2025" or use --previous-month.
+
+If you don't provide --client and/or --projects, you'll be prompted interactively to choose a client and select one or more projects.
+
+Examples:
+
+```bash
+# Sum this month for projects matching names (substring match, case-insensitive)
+sloneek team-report --projects "Project Alpha,Website Redesign"
+
+# Choose client and projects interactively
+sloneek team-report
+
+# Provide client substring, select projects interactively
+sloneek team-report --client "Acme"
+
+# Target a specific month in M.YYYY format
+sloneek team-report --projects "Alpha" --month "9.2025"
+
+# Use previous month quickly
+sloneek team-report --projects "Alpha,Beta" --previous-month
+```
+
+Options:
+- `--client <name>` (or `-c <name>`) — Client name substring; if omitted, you'll choose interactively.
+- `--projects <list>` (or `-p <list>`) — Comma-separated list of project names or substrings to include; if omitted, you'll select interactively.
+- `--month <month>` — Target month; accepts formats like `9.2025`, `09.2025`, or `2025-09`.
+- `--previous-month` — Use previous month instead of current.
+- `--profile <profile>` (or `-r <profile>`) — Use a specific profile.
+
+## Reporting one user's monthly details (report-detail action)
+
 List one user's scheduled events and absences for a selected month. Notes are fetched from the detail endpoints and rendered without truncation, allowing multiline content. The table shows: Date, Total, Time, Type, Project/Absence, Note.
 
 Usage examples:

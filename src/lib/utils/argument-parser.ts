@@ -179,6 +179,38 @@ export function parseArgs(): ParsedArgs {
     });
 
   program
+    .command("team-report")
+    .description("Sum logged hours for specified projects in a month")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .option("-c, --client <name>", "Client name substring; if omitted, choose interactively")
+    .option("-p, --projects <names>", "Comma-separated list of project names or substrings to include; if omitted, choose interactively", (s) => String(s))
+    .option("--month <month>", "Target month in formats like '9.2025', '09.2025', or '2025-09'; defaults to current month")
+    .option("--previous-month", "Use previous month instead of current month")
+    .action((options) => {
+      if (options.month && options.previousMonth) {
+        program.error("Error: --month and --previous-month cannot be used together");
+      }
+      let projects: string[] | undefined;
+      if (options.projects) {
+        projects = String(options.projects)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0);
+        if (!projects.length) {
+          projects = undefined;
+        }
+      }
+      result = {
+        command: "team-report",
+        client: options.client,
+        projects,
+        month: options.month,
+        previousMonth: !!options.previousMonth,
+        profile: options.profile,
+      } as const;
+    });
+
+  program
     .command("report-detail")
     .description("Report one user's events and absences for a month with notes")
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
