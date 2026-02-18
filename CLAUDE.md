@@ -42,6 +42,17 @@ bin/cli.ts → sloneek.ts (main router) → argument-parser.ts → action handle
 - **Token caching** — access tokens stored in config with expiration, auto-refreshed via password re-auth
 - **Terminal UI** — `terminal-kit` for colors, tables, and interactive menus
 
+## Versioning & Changelog
+
+**Always** update the version and changelog when making code changes:
+
+1. **Bump version** in `package.json` using [Semantic Versioning](http://semver.org/):
+   - **patch** (1.10.6 → 1.10.7): bug fixes, small changes
+   - **minor** (1.10.6 → 1.11.0): new features, new commands
+   - **major** (1.10.6 → 2.0.0): breaking changes
+2. **Update `CHANGELOG.md`** — add a new entry at the top of the file (below the header) following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format with sections like `### Added`, `### Changed`, `### Fixed`, `### Removed`
+3. **Add a reference link** at the bottom of `CHANGELOG.md` for the new version (e.g., `[1.10.7]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.6...v1.10.7`)
+
 ## Code Style
 
 - Prettier with `printWidth: 120`
