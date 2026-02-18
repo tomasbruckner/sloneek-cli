@@ -4,6 +4,7 @@ import { getAbsences, getEvents, fetchAbsenceReportCalendarOptions } from "../ut
 import { authenticate } from "../utils/login";
 import {
   calculateDurationMinutes,
+  formatHours,
   getCurrentDay,
   getCurrentMonth,
   getStartDay,
@@ -25,7 +26,7 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
 async function showCurrentUser(config: ProfileConfig, accessToken: string, args?: ParsedArgsList) {
   const { now, isoStart, isoEnd } = getCurrentMonth();
 
-  console.log(`Fetching events for ${now.toFormat("MMMM yyyy")}...`);
+  term.cyan(`Fetching events for ${now.toFormat("MMMM yyyy")}...\n`);
 
   const [scheduledResponse, absenceResponse] = await Promise.all([
     getEvents(
@@ -135,7 +136,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     let durationMinutes = calculateDurationMinutes(startTime, endTime);
 
     // Apply the same 30-minute deduction for full-day absences
-    const isFullDay = event.type === "absence" && (event as any).event_type === "full_day";
+    const isFullDay = event.type === "absence" && event.event_type === "full_day";
     if (isFullDay) {
       durationMinutes -= 30;
     }
@@ -145,10 +146,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
   });
 
   const visited: Record<string, boolean> = {};
-  const fmtHours = (mins: number) => {
-    const hours = mins / 60;
-    return Number.isInteger(hours) ? `${hours} hours` : `${hours.toFixed(1)} hours`;
-  };
+  const fmtHoursLabel = (mins: number) => `${formatHours(mins)} hours`;
 
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
@@ -164,7 +162,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     const truncatedProject =
       event.displayProject.length > 25 ? event.displayProject.substring(0, 22) + "..." : event.displayProject;
 
-    const totalForDay = visited[date] ? "" : fmtHours(totalMinutesByDate[date] || 0);
+    const totalForDay = visited[date] ? "" : fmtHoursLabel(totalMinutesByDate[date] || 0);
 
     tableData.push([visited[date] ? "" : date, totalForDay, timeRange, typeIndicator, truncatedClient, truncatedProject]);
 
@@ -190,7 +188,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     let durationMinutes = calculateDurationMinutes(startTime, endTime);
 
     // Check if this is a full-day absence by event_type
-    const isFullDay = event.type === "absence" && (event as any).event_type === "full_day";
+    const isFullDay = event.type === "absence" && event.event_type === "full_day";
 
     // Subtract 30 minutes from full-day absences
     if (isFullDay) {

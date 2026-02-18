@@ -1,6 +1,4 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
-import { DateTime } from "luxon";
-import { terminal as term } from "terminal-kit";
 
 export async function apiCall<T = any>(
   url: string,
@@ -103,34 +101,7 @@ export async function login(email: string, password: string): Promise<LoginInfo>
   return loginResponse.data;
 }
 
-export async function createEvent(
-  payload: EventPayload,
-  accessToken: string,
-  {
-    user,
-    clientDisplayName,
-    projectDisplayName,
-    startTime,
-    endTime,
-    startDateTime,
-  }: {
-    clientDisplayName: string;
-    user: string;
-    projectDisplayName: string;
-    startTime: string;
-    endTime: string;
-    startDateTime: DateTime<boolean>;
-  }
-) {
-  console.log("Creating event...");
-  console.log(`User: ${user}`);
-  console.log(`Client: ${clientDisplayName}`);
-  console.log(`Project: ${projectDisplayName}`);
-  console.log(`Time: ${startTime} - ${endTime} (${payload.duration} minutes)`);
-  console.log(`Date: ${startDateTime.toFormat("yyyy-MM-dd")}`);
-  console.log(`Message: ${payload.message}`);
-  console.log("");
-
+export async function createEvent(payload: EventPayload, accessToken: string) {
   await apiCall(
     "https://api2.sloneek.com/v2/module-planning/scheduled-events",
     {
@@ -165,7 +136,7 @@ export async function getAbsences(payload: AbsenceListPayload, accessToken: stri
   );
 }
 
-export async function getEvents(payload: any, accessToken: string) {
+export async function getEvents(payload: EventsListPayload, accessToken: string) {
   return apiCall<ScheduledEventsResponse>(
     "https://api2.sloneek.com/v1/module-planning/scheduled-events-calendar",
     {
@@ -215,7 +186,6 @@ export async function fetchAbsenceDetail(accessToken: string, absenceUuid: strin
 }
 
 export async function fetchCreateAbsence(accessToken: string, payload: AbsencePayload) {
-  console.log("Creating absence...");
   return apiCall<unknown>(
     "https://api2.sloneek.com/v2/module-absence/absence/absence",
     {
@@ -229,7 +199,6 @@ export async function fetchCreateAbsence(accessToken: string, payload: AbsencePa
 }
 
 export async function fetchCancelAbsence(accessToken: string, absenceUuid: string) {
-  console.log("Canceling absence...");
   return apiCall<unknown>(
     `https://api2.sloneek.com/v2/module-absence/absence/absence/${absenceUuid}/change-status`,
     {
@@ -243,7 +212,6 @@ export async function fetchCancelAbsence(accessToken: string, absenceUuid: strin
 }
 
 export async function fetchCancelWorklog(accessToken: string, worklogUuid: string) {
-  console.log("Canceling worklog...");
   return apiCall<unknown>(
     `https://api2.sloneek.com/planning/scheduled-events/${worklogUuid}/change-status`,
     {
@@ -265,7 +233,7 @@ export async function getNationalHolidays(
   },
   accessToken: string
 ) {
-  return apiCall<any>(
+  return apiCall<NationalHolidaysResponse>(
     "https://api2.sloneek.com/v1/module-core/national-holidays",
     {
       method: "POST",

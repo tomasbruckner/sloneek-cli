@@ -42,16 +42,16 @@ export async function main(): Promise<void> {
     } else if (args.command === "log-cancel") {
       await logCancelAction(profileConfig);
     } else if (args.command === "report") {
-      await reportAction(profileConfig, args as any);
+      await reportAction(profileConfig, args);
     } else if (args.command === "report-detail") {
-      await reportDetailAction(profileConfig, args as any);
+      await reportDetailAction(profileConfig, args);
     } else if (args.command === "team-report") {
-      await teamReportAction(profileConfig, args as any);
+      await teamReportAction(profileConfig, args);
     } else {
       throw new Error("Invalid command");
     }
   } catch (error: any) {
-    console.error(`Error: ${error.message}`);
+    term.red(`Error: ${error.message}\n`);
     process.exit(1);
   }
 

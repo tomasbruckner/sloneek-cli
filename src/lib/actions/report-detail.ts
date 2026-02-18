@@ -8,48 +8,13 @@ import {
   fetchAbsenceDetail,
   fetchScheduledEventDetail,
 } from "../utils/api";
-import { calculateDurationMinutes } from "../utils/time";
-
-function getMonthRangePrague(monthArg?: string) {
-  const tz = "Europe/Prague";
-  let year: number | undefined;
-  let month: number | undefined;
-
-  if (monthArg && typeof monthArg === "string") {
-    const m = monthArg.trim();
-    // Patterns: YYYY-MM
-    let match = m.match(/^(\d{4})[-\/]?(\d{1,2})$/);
-    if (match) {
-      year = parseInt(match[1], 10);
-      month = parseInt(match[2], 10);
-    }
-    // Patterns: MM.YYYY or M.YYYY or MM-YYYY
-    if (!month) {
-      match = m.match(/^(\d{1,2})[.\/-](\d{4})$/);
-      if (match) {
-        month = parseInt(match[1], 10);
-        year = parseInt(match[2], 10);
-      }
-    }
-    // Patterns: M or MM (current year)
-    if (!month && /^\d{1,2}$/.test(m)) {
-      month = parseInt(m, 10);
-    }
-  }
-
-  const now = DateTime.now().setZone(tz);
-  if (!year) year = now.year;
-  if (!month || month < 1 || month > 12) month = now.month;
-
-  const start = DateTime.fromObject({ year, month, day: 1 }, { zone: tz }).startOf("day");
-  const end = start.endOf("month").startOf("second");
-
-  return {
-    isoStart: start.toISO({ suppressMilliseconds: true }) ?? "",
-    isoEnd: end.toISO({ suppressMilliseconds: true }) ?? "",
-    monthStart: start,
-  };
-}
+import {
+  calculateDurationMinutes,
+  formatHours,
+  getMonthRangePrague,
+  resolveCalendarUserId,
+  resolveCalendarUserName,
+} from "../utils/time";
 
 export async function reportDetailAction(_config: ProfileConfig, args: ParsedArgsReportDetail): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -62,8 +27,8 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
   for (const g of groups) {
     const teamName = g.team_name || "";
     for (const u of g.users || []) {
-      const uuid = (u as any).uuid || (u as any).value || "";
-      const name = (u as any).full_name || (u as any).name || uuid;
+      const uuid = resolveCalendarUserId(u);
+      const name = resolveCalendarUserName(u) || uuid;
       if (uuid) allUsers.push({ uuid, name, team: teamName });
     }
   }
@@ -158,7 +123,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
       uuid: a.uuid as string,
       started_at: a.started_at as string,
       ended_at: a.ended_at as string,
-      event_type: (a as any).event_type as "full_day" | "half_day" | undefined,
+      event_type: a.event_type as "full_day" | "half_day" | undefined,
     }));
 
   const all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
@@ -206,7 +171,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     const dateKey = s.toFormat("dd.MM.yyyy ccc");
     let minutes = calculateDurationMinutes(s, e);
     // Apply the same 30-minute deduction for full-day absences as in list action
-    const isFullDayAbsence = (item as any).kind === "absence" && (item as any).event_type === "full_day";
+    const isFullDayAbsence = item.kind === "absence" && item.event_type === "full_day";
     if (isFullDayAbsence) {
       minutes -= 30;
     }
@@ -214,10 +179,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
   }
 
   const seenDates = new Set<string>();
-  const fmtTotal = (mins: number) => {
-    const hours = mins / 60;
-    return Number.isInteger(hours) ? `${hours} hours` : `${hours.toFixed(1)} hours`;
-  };
+  const fmtTotal = (mins: number) => `${formatHours(mins)} hours`;
 
   for (const item of all) {
     const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
@@ -250,11 +212,11 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
     const e = DateTime.fromISO(item.ended_at).setZone("Europe/Prague");
     let minutes = calculateDurationMinutes(s, e);
-    const isFullDayAbsence = (item as any).kind === "absence" && (item as any).event_type === "full_day";
+    const isFullDayAbsence = item.kind === "absence" && item.event_type === "full_day";
     if (isFullDayAbsence) {
       minutes -= 30;
     }
-    if ((item as any).kind === "scheduled") totalLogMinutes += minutes; else totalAbsenceMinutes += minutes;
+    if (item.kind === "scheduled") totalLogMinutes += minutes; else totalAbsenceMinutes += minutes;
   }
 
   const logHours = totalLogMinutes / 60;

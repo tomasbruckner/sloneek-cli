@@ -62,6 +62,14 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
     .plus({ hours: Math.floor(duration / 60), minutes: duration % 60 })
     .toISO({ suppressMilliseconds: true });
 
+  term.cyan("Creating event...\n");
+  term.cyan(`User: ${config.user.name}\n`);
+  term.cyan(`Client: ${clientDisplayName}\n`);
+  term.cyan(`Project: ${projectDisplayName}\n`);
+  term.cyan(`Time: ${startTime} - ${endTime} (${duration} minutes)\n`);
+  term.cyan(`Date: ${startDateTime.toFormat("yyyy-MM-dd")}\n`);
+  term.cyan(`Message: ${message ?? ""}\n\n`);
+
   await createEvent(
     {
       isRepeat: false,
@@ -84,14 +92,6 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
       user_uuid: config.user.uuid,
     },
     accessToken,
-    {
-      user: config.user.name,
-      clientDisplayName,
-      projectDisplayName,
-      startDateTime,
-      startTime,
-      endTime,
-    },
   );
 
   term.green("✓ Event created successfully!");

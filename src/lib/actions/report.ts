@@ -2,47 +2,7 @@ import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
 import { fetchCalendarOptions, getEvents, getAbsences, getNationalHolidays } from "../utils/api";
-
-function getMonthRangePrague(monthArg?: string) {
-  const tz = "Europe/Prague";
-  let year: number | undefined;
-  let month: number | undefined;
-
-  if (monthArg && typeof monthArg === "string") {
-    const m = monthArg.trim();
-    // Patterns: YYYY-MM
-    let match = m.match(/^(\d{4})[-\/](\d{1,2})$/);
-    if (match) {
-      year = parseInt(match[1], 10);
-      month = parseInt(match[2], 10);
-    }
-    // Patterns: MM.YYYY or M.YYYY or MM-YYYY
-    if (!month) {
-      match = m.match(/^(\d{1,2})[.\/-](\d{4})$/);
-      if (match) {
-        month = parseInt(match[1], 10);
-        year = parseInt(match[2], 10);
-      }
-    }
-    // Patterns: M or MM (current year)
-    if (!month && /^\d{1,2}$/.test(m)) {
-      month = parseInt(m, 10);
-    }
-  }
-
-  const now = DateTime.now().setZone(tz);
-  if (!year) year = now.year;
-  if (!month || month < 1 || month > 12) month = now.month;
-
-  const start = DateTime.fromObject({ year, month, day: 1 }, { zone: tz }).startOf("day");
-  // For end, use end of month inclusive (as in list.ts getCurrentMonth)
-  const end = start.endOf("month").startOf("second");
-
-  return {
-    isoStart: start.toISO({ suppressMilliseconds: true }) ?? "",
-    isoEnd: end.toISO({ suppressMilliseconds: true }) ?? "",
-  };
-}
+import { formatHours, getMonthRangePrague, resolveCalendarUserId, resolveCalendarUserName } from "../utils/time";
 
 export async function reportAction(_config: ProfileConfig, args: ParsedArgsReport): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -70,8 +30,8 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
     if (!includeGroup) return;
 
     (group.users || []).forEach((u) => {
-      const id = (u as any).uuid || (u as any).value;
-      const uname = (u as any).full_name || (u as any).name || String(id || "");
+      const id = resolveCalendarUserId(u);
+      const uname = resolveCalendarUserName(u) || String(id || "");
       const unameLc = (uname || "").toLowerCase();
       const includeUser = !nameFilter || unameLc.includes(nameFilter);
       if (id && includeUser) {
@@ -115,7 +75,7 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
       },
       accessToken,
     );
-    const items: any[] = (holidaysResp as any)?.data || [];
+    const items = holidaysResp?.data || [];
     for (const it of items) {
       const d = it?.date;
       if (typeof d === "string" && d.match(/^\d{4}-\d{2}-\d{2}$/)) holidaySet.add(d);
@@ -194,7 +154,7 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
           if (start.hasSame(end, "day")) {
             if (start.weekday <= 5 && !isHoliday(start.startOf("day"))) {
               let minutes = Math.round(end.diff(start, "minutes").minutes);
-              const isFullDay = (a as any).event_type === "full_day";
+              const isFullDay = a.event_type === "full_day";
               if (isFullDay) minutes -= 30;
               ensure(uid).absence += Math.max(0, minutes);
             }
@@ -206,7 +166,7 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
                 const dayStart = cursor;
                 const dayEnd = cursor.plus({ hours: 23, minutes: 59, seconds: 59 });
                 let minutes = Math.round(dayEnd.diff(dayStart, "minutes").minutes);
-                const isFullDay = (a as any).event_type === "full_day";
+                const isFullDay = a.event_type === "full_day";
                 if (isFullDay) minutes -= 30;
                 ensure(uid).absence += Math.max(0, minutes);
               }
@@ -219,12 +179,8 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
       }
 
       // Prepare table
-      const headers = ["User", "Team", "Work h", "Absence h", "Total h"]; 
+      const headers = ["User", "Team", "Work h", "Absence h", "Total h"];
       const table: string[][] = [headers];
-      const fmtHours = (min: number) => {
-        const h = min / 60;
-        return Number.isInteger(h) ? String(h) : h.toFixed(1);
-      };
       const trunc = (s: string, n = 30) => (s && s.length > n ? s.slice(0, n - 3) + "..." : s);
 
       // Include all selected users, even with zeros
@@ -232,9 +188,9 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
         const name = userNameMap[uid] || uid;
         const team = userTeamMap[uid] || "-";
         const totals = perUser[uid] || { work: 0, absence: 0 };
-        const workH = fmtHours(totals.work);
-        const absH = fmtHours(totals.absence);
-        const totalH = fmtHours(totals.work + totals.absence);
+        const workH = formatHours(totals.work);
+        const absH = formatHours(totals.absence);
+        const totalH = formatHours(totals.work + totals.absence);
         return [trunc(name, 28), trunc(team, 28), workH, absH, totalH];
       });
 

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.10.6] (2026-02-18)
+
+### Changed
+- Extracted duplicated `getMonthRangePrague`, `formatHours`, and calendar-user resolution helpers into shared utilities in `time.ts`
+- Replaced `console.log` calls in API layer with `term.cyan` output in action files
+- Simplified `createEvent` API function signature (moved display logging to `log.ts`)
+- Unified error handling: removed redundant try-catch in `login.ts` to prevent double error output
+
+### Fixed
+- Fixed typo "Unknow type" → "Unknown type" in absence action
+- Removed duplicate `Project`, `Client`, `ClientsResponse` interface definitions in types
+- Added proper TypeScript types (`CalendarUser`, `EventsListPayload`, `NationalHolidaysResponse`, `ScheduledEventsResponse.events`) to eliminate `as any` casts
+- Removed `as any` casts in router (`sloneek.ts`) where TypeScript narrowing already works
+
 ## [1.10.5] (2025-10-31)
 
 ### Added
@@ -196,6 +210,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.10.6]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.5...v1.10.6
 [1.10.5]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.2...v1.10.3

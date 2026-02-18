@@ -188,3 +188,66 @@ export function getTodayFormatted(): string {
   const now = DateTime.now().setZone(timezone);
   return now.toFormat("d.M.yyyy");
 }
+
+export function getMonthRangePrague(monthArg?: string, previousMonth?: boolean) {
+  const now = DateTime.now().setZone(timezone);
+
+  let target = now.startOf("month");
+
+  if (monthArg && typeof monthArg === "string") {
+    const m = monthArg.trim();
+    let year: number | undefined;
+    let month: number | undefined;
+
+    // Patterns: YYYY-MM or YYYY/MM
+    let match = m.match(/^(\d{4})[-\/]?(\d{1,2})$/);
+    if (match) {
+      year = parseInt(match[1], 10);
+      month = parseInt(match[2], 10);
+    }
+    // Patterns: MM.YYYY or M.YYYY or MM-YYYY
+    if (!month) {
+      match = m.match(/^(\d{1,2})[.\/-](\d{4})$/);
+      if (match) {
+        month = parseInt(match[1], 10);
+        year = parseInt(match[2], 10);
+      }
+    }
+    // Patterns: M or MM (current year)
+    if (!month && /^\d{1,2}$/.test(m)) {
+      month = parseInt(m, 10);
+      year = now.year;
+    }
+
+    if (year && month && month >= 1 && month <= 12) {
+      target = DateTime.fromObject({ year, month, day: 1 }, { zone: timezone }).startOf("day");
+    }
+  }
+
+  if (!monthArg && previousMonth) {
+    target = target.minus({ months: 1 });
+  }
+
+  const start = target.startOf("month");
+  const end = target.endOf("month").startOf("second");
+
+  return {
+    isoStart: start.toISO({ suppressMilliseconds: true }) ?? "",
+    isoEnd: end.toISO({ suppressMilliseconds: true }) ?? "",
+    monthStart: start,
+    label: target.toFormat("LLLL yyyy"),
+  };
+}
+
+export function formatHours(minutes: number): string {
+  const h = minutes / 60;
+  return Number.isInteger(h) ? String(h) : h.toFixed(1);
+}
+
+export function resolveCalendarUserId(u: CalendarUser): string {
+  return u.uuid || u.value || "";
+}
+
+export function resolveCalendarUserName(u: CalendarUser): string {
+  return u.full_name || u.name || "";
+}

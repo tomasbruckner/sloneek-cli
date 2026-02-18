@@ -2,58 +2,7 @@ import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
 import { fetchCalendarOptions, getEvents, getClients } from "../utils/api";
-import { calculateDurationMinutes } from "../utils/time";
-
-function getMonthRangePrague(monthArg?: string, previousMonth?: boolean) {
-  const tz = "Europe/Prague";
-  const now = DateTime.now().setZone(tz);
-
-  let target = now.startOf("month");
-
-  // Parse explicit month if provided
-  if (monthArg && typeof monthArg === "string") {
-    const m = monthArg.trim();
-    let year: number | undefined;
-    let month: number | undefined;
-
-    // Accept formats like YYYY-MM or YYYY/MM
-    let match = m.match(/^(\d{4})[-\/]?(\d{1,2})$/);
-    if (match) {
-      year = parseInt(match[1], 10);
-      month = parseInt(match[2], 10);
-    }
-    // Accept MM.YYYY or M.YYYY or MM-YYYY
-    if (!month) {
-      match = m.match(/^(\d{1,2})[.\/-](\d{4})$/);
-      if (match) {
-        month = parseInt(match[1], 10);
-        year = parseInt(match[2], 10);
-      }
-    }
-    // Accept M or MM => current year
-    if (!month && /^\d{1,2}$/.test(m)) {
-      month = parseInt(m, 10);
-      year = now.year;
-    }
-
-    if (year && month && month >= 1 && month <= 12) {
-      target = DateTime.fromObject({ year, month, day: 1 }, { zone: tz }).startOf("day");
-    }
-  }
-
-  if (!monthArg && previousMonth) {
-    target = target.minus({ months: 1 });
-  }
-
-  const start = target.startOf("month");
-  const end = target.endOf("month").startOf("second");
-
-  return {
-    isoStart: start.toISO({ suppressMilliseconds: true }) ?? "",
-    isoEnd: end.toISO({ suppressMilliseconds: true }) ?? "",
-    label: target.toFormat("LLLL yyyy"),
-  };
-}
+import { calculateDurationMinutes, getMonthRangePrague, resolveCalendarUserId } from "../utils/time";
 
 export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsTeamReport): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -150,7 +99,7 @@ export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsT
   const usersUuids: string[] = [];
   usersGroups.forEach((group) => {
     (group.users || []).forEach((u) => {
-      const id = (u as any).uuid || (u as any).value;
+      const id = resolveCalendarUserId(u);
       if (id) usersUuids.push(id);
     });
   });

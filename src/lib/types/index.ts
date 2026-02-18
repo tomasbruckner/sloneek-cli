@@ -116,13 +116,29 @@ interface AbsenceEvent extends EventBase {
   user_absence_event?: {
     absence_event_name: string;
   };
+  event_type?: "full_day" | "half_day";
 }
 
 type ApiEvent = ScheduledEvent | AbsenceEvent;
 
 interface ScheduledEventsResponse {
   data?: {
-    events?: any[];
+    events?: {
+      uuid: string;
+      started_at: string;
+      ended_at: string;
+      user?: {
+        uuid: string;
+        full_name?: string;
+        name?: string;
+        team?: { uuid: string; name: string };
+      };
+      client?: { name: string; display_name?: string };
+      client_project?: { project_name: string };
+      title?: string;
+      message?: string;
+      duration?: number;
+    }[];
   };
 }
 
@@ -261,21 +277,6 @@ interface UsersResponse {
   data: User[];
 }
 
-interface Project {
-  uuid: string;
-  project_name: string;
-}
-
-interface Client {
-  uuid: string;
-  name: string;
-  projects: Project[];
-}
-
-interface ClientsResponse {
-  data: Client[];
-}
-
 interface PlanningEvent {
   uuid: string;
   display_name: string;
@@ -299,19 +300,32 @@ interface CategoriesResponse {
   data: Category[];
 }
 
+interface CalendarUser {
+  uuid?: string;
+  value?: string;
+  full_name?: string;
+  name?: string;
+}
+
 interface CalendarOptionsResponse {
   data: {
     users: {
       team_name: string;
       team_color?: string | null;
-      users: {
-        uuid?: string; // some responses might use uuid
-        value?: string; // some responses might use value
-        full_name?: string;
-        name?: string;
-      }[];
+      users: CalendarUser[];
     }[];
   };
+}
+
+interface EventsListPayload {
+  interval_starting_at: string;
+  interval_ending_at: string;
+  users_uuids: string[];
+  quick_filter: null;
+}
+
+interface NationalHolidaysResponse {
+  data?: { date: string; name?: string }[];
 }
 
 interface AbsenceReportCalendarOptionsResponse {
