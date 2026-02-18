@@ -255,3 +255,24 @@ export async function fetchCancelWorklog(accessToken: string, worklogUuid: strin
     }
   );
 }
+
+export async function getNationalHolidays(
+  payload: {
+    from_date: string; // YYYY-MM-DD
+    to_date: string;   // YYYY-MM-DD
+    is_show_company_holidays: boolean;
+    users_uuids: string[];
+  },
+  accessToken: string
+) {
+  return apiCall<any>(
+    "https://api2.sloneek.com/v1/module-core/national-holidays",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      data: payload,
+    }
+  );
+}

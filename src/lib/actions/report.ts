@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
-import { fetchCalendarOptions, getEvents, getAbsences } from "../utils/api";
+import { fetchCalendarOptions, getEvents, getAbsences, getNationalHolidays } from "../utils/api";
 
 function getMonthRangePrague(monthArg?: string) {
   const tz = "Europe/Prague";
@@ -99,6 +99,35 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
     interval_ending_at = isoEnd;
   }
 
+  // Fetch national holidays for the interval and selected users (used to exclude from workdays/absence totals)
+  const tz = "Europe/Prague";
+  const fromDate = DateTime.fromISO(interval_starting_at).setZone(tz).toISODate()!;
+  const toDate = DateTime.fromISO(interval_ending_at).setZone(tz).toISODate()!;
+  let holidaySet = new Set<string>();
+  try {
+    term.cyan("Fetching national holidays...\n");
+    const holidaysResp = await getNationalHolidays(
+      {
+        from_date: fromDate,
+        to_date: toDate,
+        is_show_company_holidays: true,
+        users_uuids: usersUuids,
+      },
+      accessToken,
+    );
+    const items: any[] = (holidaysResp as any)?.data || [];
+    for (const it of items) {
+      const d = it?.date;
+      if (typeof d === "string" && d.match(/^\d{4}-\d{2}-\d{2}$/)) holidaySet.add(d);
+    }
+  } catch (e) {
+    term.yellow("Warning: failed to fetch national holidays; holidays will not be excluded.\n");
+  }
+  const isHoliday = (dt: DateTime) => {
+    const iso = dt.toISODate();
+    return !!(iso && holidaySet.has(iso));
+  };
+
   term.cyan("Fetching scheduled events for all users...\n");
   const resp = await getEvents(
     {
@@ -163,7 +192,7 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
           const end = DateTime.fromISO(a.ended_at).setZone("Europe/Prague");
 
           if (start.hasSame(end, "day")) {
-            if (start.weekday <= 5) {
+            if (start.weekday <= 5 && !isHoliday(start.startOf("day"))) {
               let minutes = Math.round(end.diff(start, "minutes").minutes);
               const isFullDay = (a as any).event_type === "full_day";
               if (isFullDay) minutes -= 30;
@@ -173,7 +202,7 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
             let cursor = start.startOf("day");
             const last = end.startOf("day");
             while (cursor <= last) {
-              if (cursor.weekday <= 5) {
+              if (cursor.weekday <= 5 && !isHoliday(cursor.startOf("day"))) {
                 const dayStart = cursor;
                 const dayEnd = cursor.plus({ hours: 23, minutes: 59, seconds: 59 });
                 let minutes = Math.round(dayEnd.diff(dayStart, "minutes").minutes);
@@ -286,7 +315,7 @@ export async function reportAction(_config: ProfileConfig, args: ParsedArgsRepor
 
     const workdays: string[] = [];
     while (cursor < effectiveEnd) {
-      if (cursor.weekday <= 5) {
+      if (cursor.weekday <= 5 && !isHoliday(cursor.startOf("day"))) {
         workdays.push(cursor.toISODate()!); // ISO date key YYYY-MM-DD
       }
       cursor = cursor.plus({ days: 1 });

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.10.5] (2025-10-31)
+
+### Added
+- report: Added `getNationalHolidays` API helper that calls `POST /v1/module-core/national-holidays` with `from_date`, `to_date`, `is_show_company_holidays`, and `users_uuids`.
+
+### Changed
+- report: Exclude national and company holidays from workday calculations and absence totals in `--summary` and `--validate` modes. Holidays are resolved for the selected interval and users and compared by ISO date. If the holidays request fails, a warning is printed and behavior falls back to previous logic (no holiday exclusion).
+
 ## [1.10.4] (2025-09-19)
 
 ### Fixed
@@ -188,6 +196,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.10.5]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.3...v1.10.4
 [1.10.3]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.2...v1.10.3
 [1.10.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.1...v1.10.2
