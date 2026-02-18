@@ -36,6 +36,7 @@ type ParsedArgsLog = {
   yesterday?: boolean;
   interactiveClient: boolean;
   interactiveProject: boolean;
+  interactiveActivity: boolean;
 } & BaseCommand;
 
 type ParsedArgsList = {

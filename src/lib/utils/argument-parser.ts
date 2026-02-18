@@ -37,6 +37,7 @@ export function parseArgs(): ParsedArgs {
     .option("-y, --yesterday", "Use yesterday's date")
     .option("-c, --client", "Interactive client mode")
     .option("-p, --project", "Interactive project mode")
+    .option("-a, --activity", "Interactive activity mode")
     .action((options) => {
       // Check for mutual exclusivity between --day and --yesterday
       if (options.day && options.yesterday) {
@@ -53,6 +54,7 @@ export function parseArgs(): ParsedArgs {
         message: processedMessage,
         interactiveClient: options.client ?? false,
         interactiveProject: options.project ?? false,
+        interactiveActivity: options.activity ?? false,
         profile: options.profile
       } as const;
 

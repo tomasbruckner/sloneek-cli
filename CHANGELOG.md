@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] (2026-02-18)
+
+### Added
+- log: New `-a` (`--activity`) option for interactive activity (planning event) selection at log time, instead of always using the default from config
+
 ## [1.10.6] (2026-02-18)
 
 ### Changed
@@ -210,6 +215,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.11.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.6...v1.11.0
 [1.10.6]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.5...v1.10.6
 [1.10.5]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.4...v1.10.5
 [1.10.4]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.3...v1.10.4

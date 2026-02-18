@@ -1,15 +1,37 @@
-import { createEvent, getClients } from "../utils/api";
+import { createEvent, fetchUserEvents, getClients } from "../utils/api";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
 import { calculateDurationMinutes, createDateTimeForSpecificDay, createDateTimeForToday } from "../utils/time";
 import { DateTime } from "luxon";
 
 export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog) {
-  const { message, interactiveClient, interactiveProject, day, yesterday, profile } = args;
+  const { message, interactiveClient, interactiveProject, interactiveActivity, day, yesterday, profile } = args;
 
   const accessToken = await authenticate(profile);
 
   let clientUuid: string, clientDisplayName: string, projectUuid: string, projectDisplayName: string;
+  let planningEventUuid = config.planningEvent.uuid;
+  let activityDisplayName = config.planningEvent.name;
+
+  if (interactiveActivity) {
+    term.cyan("Fetching activities...\n");
+    const planningEventsResponse = await fetchUserEvents(accessToken, config.user.uuid);
+
+    if (planningEventsResponse.data.length === 1) {
+      const selected = planningEventsResponse.data[0];
+      planningEventUuid = selected.uuid;
+      activityDisplayName = selected.planning_event.display_name;
+      term.green(`✓ Using activity: ${activityDisplayName}\n\n`);
+    } else {
+      term.cyan("Choose activity:\n");
+      const activityItems = planningEventsResponse.data.map((event) => event.planning_event.display_name);
+      const selectedIndex = await term.gridMenu(activityItems).promise;
+      const selected = planningEventsResponse.data[selectedIndex.selectedIndex];
+      planningEventUuid = selected.uuid;
+      activityDisplayName = selected.planning_event.display_name;
+      term("\n");
+    }
+  }
 
   if (interactiveClient || interactiveProject) {
     const { selectedClient, selectedProject } = await interactiveClientProjectSelection(
@@ -64,6 +86,7 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
 
   term.cyan("Creating event...\n");
   term.cyan(`User: ${config.user.name}\n`);
+  term.cyan(`Activity: ${activityDisplayName}\n`);
   term.cyan(`Client: ${clientDisplayName}\n`);
   term.cyan(`Project: ${projectDisplayName}\n`);
   term.cyan(`Time: ${startTime} - ${endTime} (${duration} minutes)\n`);
@@ -73,7 +96,7 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
   await createEvent(
     {
       isRepeat: false,
-      user_planning_event_uuid: config.planningEvent.uuid,
+      user_planning_event_uuid: planningEventUuid,
       planning_categories: config.categories ? config.categories.map((category) => category.uuid) : [],
       started_at: startDateTime.toISO({ suppressMilliseconds: true })!,
       ended_at: endDateTime.toISO({ suppressMilliseconds: true })!,
