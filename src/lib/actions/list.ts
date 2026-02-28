@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { getAbsences, getEvents, fetchAbsenceReportCalendarOptions } from "../utils/api";
+import { getAbsences, getEventDetail, getEvents, fetchAbsenceReportCalendarOptions } from "../utils/api";
 import { authenticate } from "../utils/login";
 import {
   calculateDurationMinutes,
@@ -11,6 +11,8 @@ import {
   isSameDay,
   isWorkDay,
 } from "../utils/time";
+
+const FULL_DAY_ABSENCE_OFFSET_MINUTES = 30;
 
 export async function listEventsAction(config: ProfileConfig, args: ParsedArgsList): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -25,6 +27,7 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
 
 async function showCurrentUser(config: ProfileConfig, accessToken: string, args?: ParsedArgsList) {
   const { isoStart, isoEnd, label } = getMonthRangePrague(args?.month, args?.previousMonth);
+  const detail = args?.detail;
 
   term.cyan(`Fetching events for ${label}...\n`);
 
@@ -122,8 +125,29 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     return;
   }
 
+  // Fetch notes for scheduled events when --detail flag is used
+  const eventNotes: Record<string, string> = {};
+  if (detail) {
+    console.log("Fetching event details...");
+    for (const event of scheduledEvents) {
+      if ((event as any).uuid) {
+        try {
+          const detailResponse = await getEventDetail((event as any).uuid, accessToken);
+          const note = detailResponse.data?.scheduled_event_data?.note;
+          if (note) {
+            eventNotes[(event as any).uuid] = note;
+          }
+        } catch {
+          // Skip if detail fetch fails
+        }
+      }
+    }
+  }
+
   // Create a table with headers
-  const headers = ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
+  const headers = detail
+    ? ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
+    : ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
 
   // Create table data
   const tableData = [headers];
@@ -164,7 +188,15 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
 
     const totalForDay = visited[date] ? "" : fmtHoursLabel(totalMinutesByDate[date] || 0);
 
-    tableData.push([visited[date] ? "" : date, totalForDay, timeRange, typeIndicator, truncatedClient, truncatedProject]);
+    const row = [visited[date] ? "" : date, totalForDay, timeRange, typeIndicator, truncatedClient, truncatedProject];
+
+    if (detail) {
+      const note = (event as any).uuid ? eventNotes[(event as any).uuid] || "" : "";
+      const truncatedNote = note.length > 40 ? note.substring(0, 37) + "..." : note;
+      row.push(truncatedNote);
+    }
+
+    tableData.push(row);
 
     visited[date] = true;
   });
@@ -174,7 +206,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     hasBorder: true,
     contentHasMarkup: true,
     borderChars: "lightRounded",
-    width: 100,
+    width: detail ? 140 : 100,
     fit: true,
   });
 
@@ -190,9 +222,9 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     // Check if this is a full-day absence by event_type
     const isFullDay = event.type === "absence" && event.event_type === "full_day";
 
-    // Subtract 30 minutes from full-day absences
+    // Full-day absences span 23:59:59 but represent 8h workdays with 30min lunch break
     if (isFullDay) {
-      durationMinutes -= 30;
+      durationMinutes -= FULL_DAY_ABSENCE_OFFSET_MINUTES;
     }
 
     if (event.type === "scheduled") {

@@ -44,6 +44,7 @@ type ParsedArgsList = {
   other: boolean;
   teamPrefixes?: string[];
   client?: string;
+  detail?: boolean;
   month?: string;
   previousMonth?: boolean;
 } & BaseCommand;
@@ -142,6 +143,25 @@ interface ScheduledEventsResponse {
       message?: string;
       duration?: number;
     }[];
+  };
+}
+
+interface EventDetailResponse {
+  data?: {
+    scheduled_event_data?: {
+      note?: string;
+      message?: string;
+      jira_issue_key?: string;
+      jira_issue_url?: string;
+      client?: {
+        name: string;
+      };
+      client_project?: {
+        project_name: string;
+      };
+      start_date_time_ctz?: string;
+      end_date_time_ctz?: string;
+    };
   };
 }
 
