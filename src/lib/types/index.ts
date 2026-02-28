@@ -39,6 +39,8 @@ type ParsedArgsList = {
   command: "list";
   other: boolean;
   teamPrefix: string;
+  detail: boolean;
+  month?: number;
 } & BaseCommand;
 
 interface Client {
@@ -92,6 +94,25 @@ type ApiEvent = ScheduledEvent | AbsenceEvent;
 interface ScheduledEventsResponse {
   data?: {
     events?: any[];
+  };
+}
+
+interface EventDetailResponse {
+  data?: {
+    scheduled_event_data?: {
+      note?: string;
+      message?: string;
+      jira_issue_key?: string;
+      jira_issue_url?: string;
+      client?: {
+        name: string;
+      };
+      client_project?: {
+        project_name: string;
+      };
+      start_date_time_ctz?: string;
+      end_date_time_ctz?: string;
+    };
   };
 }
 
@@ -227,21 +248,6 @@ interface User {
 
 interface UsersResponse {
   data: User[];
-}
-
-interface Project {
-  uuid: string;
-  project_name: string;
-}
-
-interface Client {
-  uuid: string;
-  name: string;
-  projects: Project[];
-}
-
-interface ClientsResponse {
-  data: Client[];
 }
 
 interface PlanningEvent {

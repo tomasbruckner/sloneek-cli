@@ -18,7 +18,7 @@ export async function createAbsenceAction(config: ProfileConfig) {
   } else if (selected.absence_event.unit_type === "days_and_half_days") {
     await chooseHalfDayAbsence(loginInfo.access_token, message, selected);
   } else {
-    throw new Error("Unknow type " + selected.absence_event.unit_type);
+    throw new Error("Unknown type " + selected.absence_event.unit_type);
   }
 
   term.green("✓ Absence created\n\n");

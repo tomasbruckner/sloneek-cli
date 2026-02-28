@@ -40,18 +40,6 @@ export async function fetchUsers(accessToken: string) {
   );
 }
 
-export async function fetchClients(
-  accessToken: string,
-  selectedUserUuid: string
-) {
-  return await apiCall<ClientsResponse>(
-    `https://api2.sloneek.com/v2/module-planning/scheduled-events/options/clients?user_uuid=${selectedUserUuid}`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
-  );
-}
-
 export async function fetchUserEvents(
   accessToken: string,
   selectedUserUuid: string
@@ -123,6 +111,15 @@ export async function createEvent(
         Authorization: `Bearer ${accessToken}`,
       },
       data: payload,
+    }
+  );
+}
+
+export async function getEventDetail(eventUuid: string, accessToken: string) {
+  return await apiCall<EventDetailResponse>(
+    `https://api2.sloneek.com/v2/module-planning/scheduled-events/${eventUuid}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
     }
   );
 }

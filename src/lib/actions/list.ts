@@ -1,14 +1,17 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { getAbsences, getEvents, login } from "../utils/api";
+import { getAbsences, getEventDetail, getEvents, login } from "../utils/api";
 import {
   calculateDurationMinutes,
   getCurrentDay,
   getCurrentMonth,
+  getSpecificMonth,
   getStartDay,
   isSameDay,
   isWorkDay,
 } from "../utils/time";
+
+const FULL_DAY_ABSENCE_OFFSET_MINUTES = 30;
 
 export async function listEventsAction(config: ProfileConfig, args: ParsedArgsList): Promise<void> {
   const loginInfo = await login(config.credentials.email, config.credentials.password);
@@ -18,11 +21,11 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
     return;
   }
 
-  await showCurrentUser(config, loginInfo.access_token);
+  await showCurrentUser(config, loginInfo.access_token, args.detail, args.month);
 }
 
-async function showCurrentUser(config: ProfileConfig, accessToken: string) {
-  const { now, isoStart, isoEnd } = getCurrentMonth();
+async function showCurrentUser(config: ProfileConfig, accessToken: string, detail?: boolean, month?: number) {
+  const { now, isoStart, isoEnd } = month ? getSpecificMonth(month) : getCurrentMonth();
 
   console.log(`Fetching events for ${now.toFormat("MMMM yyyy")}...`);
 
@@ -111,8 +114,29 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     return;
   }
 
+  // Fetch notes for scheduled events when --detail flag is used
+  const eventNotes: Record<string, string> = {};
+  if (detail) {
+    console.log("Fetching event details...");
+    for (const event of scheduledEvents) {
+      if ((event as any).uuid) {
+        try {
+          const detailResponse = await getEventDetail((event as any).uuid, accessToken);
+          const note = detailResponse.data?.scheduled_event_data?.note;
+          if (note) {
+            eventNotes[(event as any).uuid] = note;
+          }
+        } catch {
+          // Skip if detail fetch fails
+        }
+      }
+    }
+  }
+
   // Create a table with headers
-  const headers = ["Date", "Time", "Type", "Client/Absence", "Project/Details"];
+  const headers = detail
+    ? ["Date", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
+    : ["Date", "Time", "Type", "Client/Absence", "Project/Details"];
 
   // Create table data
   const tableData = [headers];
@@ -132,7 +156,15 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     const truncatedProject =
       event.displayProject.length > 25 ? event.displayProject.substring(0, 22) + "..." : event.displayProject;
 
-    tableData.push([visited[date] ? "" : date, timeRange, typeIndicator, truncatedClient, truncatedProject]);
+    const row = [visited[date] ? "" : date, timeRange, typeIndicator, truncatedClient, truncatedProject];
+
+    if (detail) {
+      const note = (event as any).uuid ? eventNotes[(event as any).uuid] || "" : "";
+      const truncatedNote = note.length > 40 ? note.substring(0, 37) + "..." : note;
+      row.push(truncatedNote);
+    }
+
+    tableData.push(row);
 
     visited[date] = true;
   });
@@ -142,7 +174,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     hasBorder: true,
     contentHasMarkup: true,
     borderChars: "lightRounded",
-    width: 100,
+    width: detail ? 140 : 100,
     fit: true,
   });
 
@@ -158,9 +190,9 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string) {
     // Check if this is a full-day absence by event_type
     const isFullDay = event.type === "absence" && (event as any).event_type === "full_day";
 
-    // Subtract 30 minutes from full-day absences
+    // Full-day absences span 23:59:59 but represent 8h workdays with 30min lunch break
     if (isFullDay) {
-      durationMinutes -= 30;
+      durationMinutes -= FULL_DAY_ABSENCE_OFFSET_MINUTES;
     }
 
     if (event.type === "scheduled") {
@@ -197,7 +229,7 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
       )
     ).data.events ?? []
   )
-    .filter((x) => !x.user?.team?.name || x.user.team.name.includes(teamPrefix))
+    .filter((x) => !x.user?.team?.name || x.user.team.name.toLowerCase().includes(teamPrefix.toLowerCase()))
     .sort((a, b) => a.user.full_name.localeCompare(b.user.full_name));
 
   if (allEvents.length === 0) {

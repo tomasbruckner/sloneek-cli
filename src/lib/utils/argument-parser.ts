@@ -18,11 +18,19 @@ export function parseArgs(): ParsedArgs {
       if (!/^\d{1,2}:\d{2}$/.test(value)) {
         program.error("Error: --from parameter must be in HH:MM format");
       }
+      const [hours, minutes] = value.split(":").map(Number);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        program.error("Error: --from parameter has invalid time range (hours: 0-23, minutes: 0-59)");
+      }
       return value;
     })
     .option("-t, --to <time>", "End time in HH:MM format", (value) => {
       if (!/^\d{1,2}:\d{2}$/.test(value)) {
         program.error("Error: --to parameter must be in HH:MM format");
+      }
+      const [hours, minutes] = value.split(":").map(Number);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        program.error("Error: --to parameter has invalid time range (hours: 0-23, minutes: 0-59)");
       }
       return value;
     })
@@ -105,13 +113,23 @@ export function parseArgs(): ParsedArgs {
       "-t, --team-prefix <team_name>",
       "Filter absences only for specific team. With conjuction with --other parameter"
     )
+    .option("-d, --detail", "Show event notes/messages (requires extra API calls)")
+    .option("-M, --month <month>", "Show specific month (1-12) instead of current month", (value) => {
+      const month = parseInt(value, 10);
+      if (isNaN(month) || month < 1 || month > 12) {
+        program.error("Error: --month must be a number between 1 and 12");
+      }
+      return value;
+    })
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
-      result = { 
-        command: "list", 
-        other: !!option.other, 
+      result = {
+        command: "list",
+        other: !!option.other,
         teamPrefix: option.teamPrefix ?? '',
+        detail: !!option.detail,
+        month: option.month ? parseInt(option.month, 10) : undefined,
         profile: option.profile
       } as const;
     });

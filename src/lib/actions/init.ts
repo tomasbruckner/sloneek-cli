@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { terminal as term } from "terminal-kit";
-import { fetchCategories, fetchClients, fetchUserEvents, fetchUsers, login } from "../utils/api";
+import { fetchCategories, fetchUserEvents, fetchUsers, getClients, login } from "../utils/api";
 import { configExists, readConfig, writeConfig } from "../utils/config";
 
 export async function initConfigAction(profileName?: string): Promise<void> {
@@ -72,7 +72,7 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     }
 
     term.cyan("Fetching clients...\n");
-    const clientsResponse = await fetchClients(loginInfo.access_token, selectedUserUuid);
+    const clientsResponse = await getClients(selectedUserUuid, loginInfo.access_token);
 
     term.cyan("Choose client:\n");
     const clientItems = clientsResponse.data.map((client) => client.name);
