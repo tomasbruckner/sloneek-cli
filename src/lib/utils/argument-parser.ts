@@ -108,20 +108,27 @@ export function parseArgs(): ParsedArgs {
       "Filter absences by team name(s) (substring, case-insensitive). Accepts a comma-separated list; used with --other"
     )
     .option("-c, --client <client_name>", "Filter own events by Client name (substring, case-insensitive)")
+    .option("--month <month>", "Target month (e.g., 2025-02, 02, or 2). Defaults to current month")
+    .option("--previous-month", "Use previous month instead of current month")
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
+      if (option.month && option.previousMonth) {
+        program.error("Error: --month and --previous-month cannot be used together");
+      }
       // Normalize --team (new) or --team-prefix (legacy) to string[] (comma-separated list supported)
       const rawTeam = option.team ?? (option as any).teamPrefix; // keep backward compatibility
       const teamPrefixes: string[] = (rawTeam ? String(rawTeam).split(",") : [])
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
-      result = { 
-        command: "list", 
-        other: !!option.other, 
+      result = {
+        command: "list",
+        other: !!option.other,
         teamPrefixes: teamPrefixes.length ? teamPrefixes : undefined,
         client: option.client,
+        month: option.month,
+        previousMonth: !!option.previousMonth,
         profile: option.profile
       } as const;
     });

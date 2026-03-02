@@ -44,6 +44,8 @@ type ParsedArgsList = {
   other: boolean;
   teamPrefixes?: string[];
   client?: string;
+  month?: string;
+  previousMonth?: boolean;
 } & BaseCommand;
 
 type ParsedArgsReport = {

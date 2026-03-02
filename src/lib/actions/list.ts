@@ -6,7 +6,7 @@ import {
   calculateDurationMinutes,
   formatHours,
   getCurrentDay,
-  getCurrentMonth,
+  getMonthRangePrague,
   getStartDay,
   isSameDay,
   isWorkDay,
@@ -24,9 +24,9 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
 }
 
 async function showCurrentUser(config: ProfileConfig, accessToken: string, args?: ParsedArgsList) {
-  const { now, isoStart, isoEnd } = getCurrentMonth();
+  const { isoStart, isoEnd, label } = getMonthRangePrague(args?.month, args?.previousMonth);
 
-  term.cyan(`Fetching events for ${now.toFormat("MMMM yyyy")}...\n`);
+  term.cyan(`Fetching events for ${label}...\n`);
 
   const [scheduledResponse, absenceResponse] = await Promise.all([
     getEvents(
