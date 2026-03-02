@@ -141,6 +141,19 @@ export function getCurrentMonth() {
   };
 }
 
+export function getSpecificMonth(month: number) {
+  const now = DateTime.now().setZone(timezone);
+  const targetMonth = DateTime.fromObject({ year: now.year, month }, { zone: timezone });
+  const startOfMonth = targetMonth.startOf("month");
+  const endOfMonth = targetMonth.endOf("month").startOf("second");
+
+  return {
+    now: targetMonth,
+    isoStart: startOfMonth.toISO({ suppressMilliseconds: true }) ?? "",
+    isoEnd: endOfMonth.toISO({ suppressMilliseconds: true }) ?? "",
+  };
+}
+
 export function getCurrentDay() {
   const now = DateTime.now().setZone(timezone);
   const startOfDay = now.startOf("day");
