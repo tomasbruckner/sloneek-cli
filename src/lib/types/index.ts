@@ -10,7 +10,10 @@ type ParsedArgsProfile = {
 type ParsedArgs =
   | ParsedArgsLog
   | ParsedArgsList
+  | ParsedArgsReport
   | ParsedArgsProfile
+  | ParsedArgsReportDetail
+  | ParsedArgsTeamReport
   | ({
       command: "init";
     } & BaseCommand)
@@ -33,14 +36,43 @@ type ParsedArgsLog = {
   yesterday?: boolean;
   interactiveClient: boolean;
   interactiveProject: boolean;
+  interactiveActivity: boolean;
 } & BaseCommand;
 
 type ParsedArgsList = {
   command: "list";
   other: boolean;
-  teamPrefix: string;
+  teamPrefixes?: string[];
+  client?: string;
   detail: boolean;
   month?: number;
+} & BaseCommand;
+
+type ParsedArgsReport = {
+  command: "report";
+  start?: string;
+  end?: string;
+  teams?: string[];
+  name?: string;
+  validate?: boolean;
+  ignoreToday?: boolean;
+  month?: string;
+  summary?: boolean;
+} & BaseCommand;
+
+type ParsedArgsReportDetail = {
+  command: "report-detail";
+  user?: string;
+  month?: string;
+} & BaseCommand;
+
+// New team-report parsed args
+ type ParsedArgsTeamReport = {
+  command: "team-report";
+  client?: string; // optional client name substring; if omitted, select interactively
+  projects?: string[]; // optional list of project name substrings; if omitted, select interactively
+  month?: string; // e.g., "9.2025", "09.2025", "2025-09" etc.
+  previousMonth?: boolean;
 } & BaseCommand;
 
 interface Client {
@@ -87,13 +119,29 @@ interface AbsenceEvent extends EventBase {
   user_absence_event?: {
     absence_event_name: string;
   };
+  event_type?: "full_day" | "half_day";
 }
 
 type ApiEvent = ScheduledEvent | AbsenceEvent;
 
 interface ScheduledEventsResponse {
   data?: {
-    events?: any[];
+    events?: {
+      uuid: string;
+      started_at: string;
+      ended_at: string;
+      user?: {
+        uuid: string;
+        full_name?: string;
+        name?: string;
+        team?: { uuid: string; name: string };
+      };
+      client?: { name: string; display_name?: string };
+      client_project?: { project_name: string };
+      title?: string;
+      message?: string;
+      duration?: number;
+    }[];
   };
 }
 
@@ -232,6 +280,7 @@ interface LoginResponse {
 
 interface LoginInfo {
   access_token: string;
+  access_token_expires_at: number;
   user: {
     team: {
       name: string;
@@ -273,6 +322,45 @@ interface CategoriesResponse {
   data: Category[];
 }
 
+interface CalendarUser {
+  uuid?: string;
+  value?: string;
+  full_name?: string;
+  name?: string;
+}
+
+interface CalendarOptionsResponse {
+  data: {
+    users: {
+      team_name: string;
+      team_color?: string | null;
+      users: CalendarUser[];
+    }[];
+  };
+}
+
+interface EventsListPayload {
+  interval_starting_at: string;
+  interval_ending_at: string;
+  users_uuids: string[];
+  quick_filter: null;
+}
+
+interface NationalHolidaysResponse {
+  data?: { date: string; name?: string }[];
+}
+
+interface AbsenceReportCalendarOptionsResponse {
+  data: {
+    users_select?: {
+      users?: {
+        uuid: string;
+        full_name?: string;
+      }[];
+    }[];
+  };
+}
+
 interface ApiOptions {
   method?: string;
   headers?: Record<string, string>;
@@ -283,6 +371,10 @@ interface ProfileConfig {
   credentials: {
     email: string;
     password: string;
+  };
+  token?: {
+    access_token: string;
+    expires_at: string;
   };
   user: {
     uuid: string;

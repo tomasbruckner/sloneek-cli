@@ -1,10 +1,11 @@
 import { terminal as term } from "terminal-kit";
-import { fetchCancelWorklog, getEvents, login } from "../utils/api";
+import { fetchCancelWorklog, getEvents } from "../utils/api";
+import { authenticate } from "../utils/login";
 import { getCurrentMonth } from "../utils/time";
 import { DateTime } from "luxon";
 
-export async function logCancelAction(config: ProfileConfig) {
-  const loginInfo = await login(config.credentials.email, config.credentials.password);
+export async function logCancelAction(config: ProfileConfig, args?: BaseCommand) {
+  const accessToken = await authenticate(args?.profile);
 
   // Get the first and last day of the current month
   const { isoStart, isoEnd } = getCurrentMonth();
@@ -16,7 +17,7 @@ export async function logCancelAction(config: ProfileConfig) {
       users_uuids: [config.user.uuid],
       quick_filter: null,
     },
-    loginInfo.access_token,
+    accessToken,
   );
 
   const worklogs = (eventsResponse.data?.events || []).sort(
@@ -58,7 +59,7 @@ export async function logCancelAction(config: ProfileConfig) {
     return;
   }
 
-  await fetchCancelWorklog(loginInfo.access_token, selectedWorklog.uuid);
+  await fetchCancelWorklog(accessToken, selectedWorklog.uuid);
 
   term.green("✓ Worklog cancelled successfully\n\n");
 }

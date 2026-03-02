@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { fetchCategories, fetchUserEvents, fetchUsers, getClients, login } from "../utils/api";
 import { configExists, readConfig, writeConfig } from "../utils/config";
@@ -179,6 +180,10 @@ export async function initConfigAction(profileName?: string): Promise<void> {
         end: endTime,
       },
       timestamp: new Date().toISOString(),
+      token: {
+        access_token: loginInfo.access_token,
+        expires_at: DateTime.fromSeconds(loginInfo.access_token_expires_at).toISO(),
+      },
     };
 
     // Create or update the configuration

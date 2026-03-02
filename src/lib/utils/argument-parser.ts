@@ -45,6 +45,7 @@ export function parseArgs(): ParsedArgs {
     .option("-y, --yesterday", "Use yesterday's date")
     .option("-c, --client", "Interactive client mode")
     .option("-p, --project", "Interactive project mode")
+    .option("-a, --activity", "Interactive activity mode")
     .action((options) => {
       // Check for mutual exclusivity between --day and --yesterday
       if (options.day && options.yesterday) {
@@ -61,6 +62,7 @@ export function parseArgs(): ParsedArgs {
         message: processedMessage,
         interactiveClient: options.client ?? false,
         interactiveProject: options.project ?? false,
+        interactiveActivity: options.activity ?? false,
         profile: options.profile
       } as const;
 
@@ -110,8 +112,8 @@ export function parseArgs(): ParsedArgs {
       "Show absences and events for other users in your team for current day"
     )
     .option(
-      "-t, --team-prefix <team_name>",
-      "Filter absences only for specific team. With conjuction with --other parameter"
+      "-t, --team <team_name>",
+      "Filter absences by team name(s) (substring, case-insensitive). Accepts a comma-separated list; used with --other"
     )
     .option("-d, --detail", "Show event notes/messages (requires extra API calls)")
     .option("-M, --month <month>", "Show specific month (1-12) instead of current month", (value) => {
@@ -121,16 +123,126 @@ export function parseArgs(): ParsedArgs {
       }
       return value;
     })
+    .option("-c, --client <client_name>", "Filter own events by Client name (substring, case-insensitive)")
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
+      // Normalize --team (new) or --team-prefix (legacy) to string[] (comma-separated list supported)
+      const rawTeam = option.team ?? (option as any).teamPrefix; // keep backward compatibility
+      const teamPrefixes: string[] = (rawTeam ? String(rawTeam).split(",") : [])
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
       result = {
         command: "list",
         other: !!option.other,
-        teamPrefix: option.teamPrefix ?? '',
+        teamPrefixes: teamPrefixes.length ? teamPrefixes : undefined,
+        client: option.client,
         detail: !!option.detail,
         month: option.month ? parseInt(option.month, 10) : undefined,
         profile: option.profile
+      } as const;
+    });
+
+  program
+    .command("report")
+    .description("Report scheduled events for all users in calendar options")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .option("--start <iso>", "Interval start ISO (e.g., 2025-08-04T00:00:00+02:00)")
+    .option("--end <iso>", "Interval end ISO (e.g., 2025-08-11T00:00:00+02:00)")
+    .option(
+      "-t, --team <team_name>",
+      "Filter users by team name(s) (substring, case-insensitive). Accepts a comma-separated list"
+    )
+    .option(
+      "-n, --name <name>",
+      "Filter users by name (substring, case-insensitive)"
+    )
+    .option(
+      "--validate",
+      "Show users who have no scheduled event in the selected interval (respects filters)"
+    )
+    .option(
+      "--ignore-today",
+      "When used with --validate, exclude today from validation (validate up to yesterday)"
+    )
+    .option(
+      "--month <month>",
+      "Target month to report (e.g., 2025-08, 08, or 8). Applies only when --start/--end are not provided; defaults to current month"
+    )
+    .option(
+      "--summary",
+      "Include per-day summary columns (Work h, Absence h, Total h) in the report table"
+    )
+    .action((options) => {
+      if ((options.start && !options.end) || (!options.start && options.end)) {
+        program.error("Error: both --start and --end must be provided together");
+      }
+
+      // Normalize --team to string[] (comma-separated list supported)
+      const teams: string[] = (options.team ? String(options.team).split(",") : [])
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
+      result = {
+        command: "report",
+        start: options.start,
+        end: options.end,
+        teams: teams.length ? teams : undefined,
+        name: options.name,
+        validate: !!options.validate,
+        ignoreToday: !!options.ignoreToday,
+        month: options.month,
+        summary: !!options.summary,
+        profile: options.profile,
+      } as const;
+    });
+
+  program
+    .command("team-report")
+    .description("Sum logged hours for specified projects in a month")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .option("-c, --client <name>", "Client name substring; if omitted, choose interactively")
+    .option("-p, --projects <names>", "Comma-separated list of project names or substrings to include; if omitted, choose interactively", (s) => String(s))
+    .option("--month <month>", "Target month in formats like '9.2025', '09.2025', or '2025-09'; defaults to current month")
+    .option("--previous-month", "Use previous month instead of current month")
+    .action((options) => {
+      if (options.month && options.previousMonth) {
+        program.error("Error: --month and --previous-month cannot be used together");
+      }
+      let projects: string[] | undefined;
+      if (options.projects) {
+        projects = String(options.projects)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0);
+        if (!projects.length) {
+          projects = undefined;
+        }
+      }
+      result = {
+        command: "team-report",
+        client: options.client,
+        projects,
+        month: options.month,
+        previousMonth: !!options.previousMonth,
+        profile: options.profile,
+      } as const;
+    });
+
+  program
+    .command("report-detail")
+    .description("Report one user's events and absences for a month with notes")
+    .option("-r, --profile <profile>", "Use specific profile instead of the default one")
+    .option("-u, --user <name|uuid>", "User name or UUID (substring match); if omitted, choose interactively")
+    .option("-n, --name <name|uuid>", "Alias for --user: user name or UUID (substring match)")
+    .option("--month <month>", "Target month (e.g., 2025-08, 08, or 8). Defaults to current month")
+    .action((options) => {
+      result = {
+        command: "report-detail",
+        user: options.user ?? options.name,
+        month: options.month,
+        profile: options.profile,
       } as const;
     });
 

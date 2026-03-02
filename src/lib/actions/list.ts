@@ -1,8 +1,10 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { getAbsences, getEventDetail, getEvents, login } from "../utils/api";
+import { getAbsences, getEventDetail, getEvents, fetchAbsenceReportCalendarOptions } from "../utils/api";
+import { authenticate } from "../utils/login";
 import {
   calculateDurationMinutes,
+  formatHours,
   getCurrentDay,
   getCurrentMonth,
   getSpecificMonth,
@@ -14,20 +16,20 @@ import {
 const FULL_DAY_ABSENCE_OFFSET_MINUTES = 30;
 
 export async function listEventsAction(config: ProfileConfig, args: ParsedArgsList): Promise<void> {
-  const loginInfo = await login(config.credentials.email, config.credentials.password);
+  const accessToken = await authenticate(args.profile);
 
   if (args.other) {
-    await showOtherUsers(loginInfo, args.teamPrefix);
+    await showOtherUsers(accessToken, args.teamPrefixes);
     return;
   }
 
-  await showCurrentUser(config, loginInfo.access_token, args.detail, args.month);
+  await showCurrentUser(config, accessToken, args);
 }
 
-async function showCurrentUser(config: ProfileConfig, accessToken: string, detail?: boolean, month?: number) {
-  const { now, isoStart, isoEnd } = month ? getSpecificMonth(month) : getCurrentMonth();
+async function showCurrentUser(config: ProfileConfig, accessToken: string, args?: ParsedArgsList) {
+  const { now, isoStart, isoEnd } = args?.month ? getSpecificMonth(args.month) : getCurrentMonth();
 
-  console.log(`Fetching events for ${now.toFormat("MMMM yyyy")}...`);
+  term.cyan(`Fetching events for ${now.toFormat("MMMM yyyy")}...\n`);
 
   const [scheduledResponse, absenceResponse] = await Promise.all([
     getEvents(
@@ -51,7 +53,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
     ),
   ]);
 
-  const scheduledEvents: ScheduledEvent[] = (scheduledResponse.data?.events || []).map(
+  let scheduledEvents: ScheduledEvent[] = (scheduledResponse.data?.events || []).map(
     (event: any): ScheduledEvent => ({
       ...event,
       type: "scheduled",
@@ -60,6 +62,12 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
       displayType: "Work",
     }),
   );
+
+  // If --client is provided, filter only scheduled events for matching client name (case-insensitive)
+  const clientFilter = args?.client?.toLowerCase().trim();
+  if (clientFilter) {
+    scheduledEvents = scheduledEvents.filter((ev) => (ev.client?.name || ev.displayClient || "").toLowerCase().includes(clientFilter));
+  }
 
   const expandedAbsenceEvents: AbsenceEvent[] = [];
 
@@ -105,7 +113,10 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
     }
   });
 
-  const allEvents: ApiEvent[] = [...scheduledEvents, ...expandedAbsenceEvents].sort((a, b) => {
+  // Build final events list; when client filter is active, we only display scheduled (work) events
+  const allEvents: ApiEvent[] = (
+    clientFilter ? scheduledEvents : [...scheduledEvents, ...expandedAbsenceEvents]
+  ).sort((a, b) => {
     return new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
   });
 
@@ -116,7 +127,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
 
   // Fetch notes for scheduled events when --detail flag is used
   const eventNotes: Record<string, string> = {};
-  if (detail) {
+  if (args?.detail) {
     console.log("Fetching event details...");
     for (const event of scheduledEvents) {
       if ((event as any).uuid) {
@@ -134,14 +145,33 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
   }
 
   // Create a table with headers
-  const headers = detail
-    ? ["Date", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
-    : ["Date", "Time", "Type", "Client/Absence", "Project/Details"];
+  const headers = args?.detail
+    ? ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
+    : ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
 
   // Create table data
   const tableData = [headers];
 
+  // Compute total minutes per day with the same logic as monthly totals
+  const totalMinutesByDate: Record<string, number> = {};
+  allEvents.forEach((event) => {
+    const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
+    const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
+    let durationMinutes = calculateDurationMinutes(startTime, endTime);
+
+    // Apply the same 30-minute deduction for full-day absences
+    const isFullDay = event.type === "absence" && event.event_type === "full_day";
+    if (isFullDay) {
+      durationMinutes -= 30;
+    }
+
+    const dateKey = startTime.toFormat("dd.MM.yyyy ccc");
+    totalMinutesByDate[dateKey] = (totalMinutesByDate[dateKey] || 0) + Math.max(0, durationMinutes);
+  });
+
   const visited: Record<string, boolean> = {};
+  const fmtHoursLabel = (mins: number) => `${formatHours(mins)} hours`;
+
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
@@ -156,9 +186,11 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
     const truncatedProject =
       event.displayProject.length > 25 ? event.displayProject.substring(0, 22) + "..." : event.displayProject;
 
-    const row = [visited[date] ? "" : date, timeRange, typeIndicator, truncatedClient, truncatedProject];
+    const totalForDay = visited[date] ? "" : fmtHoursLabel(totalMinutesByDate[date] || 0);
 
-    if (detail) {
+    const row = [visited[date] ? "" : date, totalForDay, timeRange, typeIndicator, truncatedClient, truncatedProject];
+
+    if (args?.detail) {
       const note = (event as any).uuid ? eventNotes[(event as any).uuid] || "" : "";
       const truncatedNote = note.length > 40 ? note.substring(0, 37) + "..." : note;
       row.push(truncatedNote);
@@ -174,7 +206,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
     hasBorder: true,
     contentHasMarkup: true,
     borderChars: "lightRounded",
-    width: detail ? 140 : 100,
+    width: args?.detail ? 140 : 100,
     fit: true,
   });
 
@@ -188,7 +220,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
     let durationMinutes = calculateDurationMinutes(startTime, endTime);
 
     // Check if this is a full-day absence by event_type
-    const isFullDay = event.type === "absence" && (event as any).event_type === "full_day";
+    const isFullDay = event.type === "absence" && event.event_type === "full_day";
 
     // Full-day absences span 23:59:59 but represent 8h workdays with 30min lunch break
     if (isFullDay) {
@@ -214,8 +246,19 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, detai
   );
 }
 
-async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
+async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
   const { isoStart, isoEnd } = getCurrentDay();
+
+  // Fetch absence report calendar options to get all users UUIDs
+  const absCalOpts = await fetchAbsenceReportCalendarOptions(accessToken);
+  const usersUuids: string[] = [];
+  for (const group of absCalOpts?.data?.users_select ?? []) {
+    for (const u of group.users ?? []) {
+      if (u?.uuid) usersUuids.push(u.uuid);
+    }
+  }
+
+  const filtersLc = (teamPrefixes || []).map((s) => s.toLowerCase());
 
   const allEvents = (
     (
@@ -223,13 +266,20 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
         {
           interval_starting_at: isoStart,
           interval_ending_at: isoEnd,
+          users_uuids: usersUuids,
           quick_filter: null,
         },
-        loginInfo.access_token,
+        accessToken,
       )
     ).data.events ?? []
   )
-    .filter((x) => !x.user?.team?.name || x.user.team.name.toLowerCase().includes(teamPrefix.toLowerCase()))
+    .filter((x) => {
+      const teamName = x.user?.team?.name;
+      if (!teamName) return true; // keep users without a team
+      if (filtersLc.length === 0) return true; // no filters => include all
+      const teamLc = teamName.toLowerCase();
+      return filtersLc.some((f) => teamLc.includes(f));
+    })
     .sort((a, b) => a.user.full_name.localeCompare(b.user.full_name));
 
   if (allEvents.length === 0) {
@@ -238,17 +288,16 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
   }
 
   // Create a table with headers
-  const headers = ["Who", "Team", "Type", "Date", "Time", "Ends"];
+  const headers = ["Who", "Team", "Type", "From", "Today", "Ends"];
 
   // Create table data
   const tableData = [headers];
-
-  const date = DateTime.fromISO(isoStart).toFormat("dd.MM.yyyy ccc");
 
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
 
+    const startDateFormatted = startTime.toFormat("dd.MM.yyyy ccc");
     const timeRange = `${startTime.toFormat("HH:mm")}-${endTime.toFormat("HH:mm")}`;
 
     const today = DateTime.now().setZone("Europe/Prague").startOf("day");
@@ -264,7 +313,7 @@ async function showOtherUsers(loginInfo: LoginInfo, teamPrefix: string) {
       event.user.full_name,
       event.user?.team?.name ?? "-",
       event.user_absence_event.absence_event_name,
-      date,
+      startDateFormatted,
       timeRange,
       endDateFormatted,
     ]);

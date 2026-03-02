@@ -1,6 +1,4 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
-import { DateTime } from "luxon";
-import { terminal as term } from "terminal-kit";
 
 export async function apiCall<T = any>(
   url: string,
@@ -61,9 +59,25 @@ export async function fetchCategories(accessToken: string) {
   );
 }
 
-export async function login(email: string, password: string): Promise<LoginInfo> {
-  term.cyan("Logging in...\n");
+export async function fetchCalendarOptions(accessToken: string) {
+  return await apiCall<CalendarOptionsResponse>(
+    "https://api2.sloneek.com/v2/module-planning/calendar/options",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+}
 
+export async function fetchAbsenceReportCalendarOptions(accessToken: string) {
+  return await apiCall<AbsenceReportCalendarOptionsResponse>(
+    "https://api2.sloneek.com/v2/module-absence/absence/report/calendar-options",
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+}
+
+export async function login(email: string, password: string): Promise<LoginInfo> {
   const loginResponse = await apiCall<LoginResponse>(
     "https://api2.sloneek.com/auth/login",
     {
@@ -75,34 +89,7 @@ export async function login(email: string, password: string): Promise<LoginInfo>
   return loginResponse.data;
 }
 
-export async function createEvent(
-  payload: EventPayload,
-  accessToken: string,
-  {
-    user,
-    clientDisplayName,
-    projectDisplayName,
-    startTime,
-    endTime,
-    startDateTime,
-  }: {
-    clientDisplayName: string;
-    user: string;
-    projectDisplayName: string;
-    startTime: string;
-    endTime: string;
-    startDateTime: DateTime<boolean>;
-  }
-) {
-  console.log("Creating event...");
-  console.log(`User: ${user}`);
-  console.log(`Client: ${clientDisplayName}`);
-  console.log(`Project: ${projectDisplayName}`);
-  console.log(`Time: ${startTime} - ${endTime} (${payload.duration} minutes)`);
-  console.log(`Date: ${startDateTime.toFormat("yyyy-MM-dd")}`);
-  console.log(`Message: ${payload.message}`);
-  console.log("");
-
+export async function createEvent(payload: EventPayload, accessToken: string) {
   await apiCall(
     "https://api2.sloneek.com/v2/module-planning/scheduled-events",
     {
@@ -146,7 +133,7 @@ export async function getAbsences(payload: AbsenceListPayload, accessToken: stri
   );
 }
 
-export async function getEvents(payload: any, accessToken: string) {
+export async function getEvents(payload: EventsListPayload, accessToken: string) {
   return apiCall<ScheduledEventsResponse>(
     "https://api2.sloneek.com/v1/module-planning/scheduled-events-calendar",
     {
@@ -171,9 +158,31 @@ export async function fetchAbsenceOptions(accessToken: string) {
   );
 }
 
+export async function fetchScheduledEventDetail(accessToken: string, eventUuid: string) {
+  return apiCall<any>(
+    `https://api2.sloneek.com/v2/module-planning/scheduled-events/${eventUuid}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+}
+
+export async function fetchAbsenceDetail(accessToken: string, absenceUuid: string) {
+  return apiCall<any>(
+    `https://api2.sloneek.com/v2/module-absence/absence/absence/${absenceUuid}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+}
 
 export async function fetchCreateAbsence(accessToken: string, payload: AbsencePayload) {
-  console.log("Creating absence...");
   return apiCall<unknown>(
     "https://api2.sloneek.com/v2/module-absence/absence/absence",
     {
@@ -187,7 +196,6 @@ export async function fetchCreateAbsence(accessToken: string, payload: AbsencePa
 }
 
 export async function fetchCancelAbsence(accessToken: string, absenceUuid: string) {
-  console.log("Canceling absence...");
   return apiCall<unknown>(
     `https://api2.sloneek.com/v2/module-absence/absence/absence/${absenceUuid}/change-status`,
     {
@@ -201,7 +209,6 @@ export async function fetchCancelAbsence(accessToken: string, absenceUuid: strin
 }
 
 export async function fetchCancelWorklog(accessToken: string, worklogUuid: string) {
-  console.log("Canceling worklog...");
   return apiCall<unknown>(
     `https://api2.sloneek.com/planning/scheduled-events/${worklogUuid}/change-status`,
     {
@@ -210,6 +217,27 @@ export async function fetchCancelWorklog(accessToken: string, worklogUuid: strin
         Authorization: `Bearer ${accessToken}`,
       },
       data: { action: "user_cancel" },
+    }
+  );
+}
+
+export async function getNationalHolidays(
+  payload: {
+    from_date: string; // YYYY-MM-DD
+    to_date: string;   // YYYY-MM-DD
+    is_show_company_holidays: boolean;
+    users_uuids: string[];
+  },
+  accessToken: string
+) {
+  return apiCall<NationalHolidaysResponse>(
+    "https://api2.sloneek.com/v1/module-core/national-holidays",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      data: payload,
     }
   );
 }

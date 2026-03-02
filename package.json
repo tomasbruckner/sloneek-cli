@@ -1,6 +1,6 @@
 {
   "name": "sloneek-cli",
-  "version": "1.7.2",
+  "version": "1.11.0",
   "description": "Sloneek CLI for creating your worklogs 100x faster.",
   "main": "index.js",
   "author": "Tomas Bruckner",
@@ -20,7 +20,9 @@
   ],
   "scripts": {
     "prepublishOnly": "npm run build",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "type": "commonjs",
   "dependencies": {
@@ -36,7 +38,8 @@
     "typescript": "^5.8.3"
   },
   "devDependencies": {
-    "@types/luxon": "^3.6.2"
+    "@types/luxon": "^3.6.2",
+    "vitest": "^4.0.18"
   },
   "prettier": {
     "printWidth": 120
