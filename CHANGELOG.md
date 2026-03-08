@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] (2026-03-08)
+
+### Added
+- list: New `--detail` (`-d`) option to show event notes/messages for scheduled events (fetches detail from the API per event)
+
+### Changed
+- init: Replaced `fetchClients` with `getClients` API helper (parameter order aligned with other API functions)
+
+## [1.12.0] (2026-03-02)
+
+### Added
+- list: New `--month` option to view events for a specific month (e.g., `--month 2`, `--month 2025-02`)
+- list: New `--previous-month` option to quickly view last month's events
+
 ## [1.11.0] (2026-02-18)
 
 ### Added
@@ -215,6 +229,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.13.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.12.0...v1.13.0
+[1.12.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.6...v1.11.0
 [1.10.6]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.5...v1.10.6
 [1.10.5]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.10.4...v1.10.5

@@ -18,11 +18,19 @@ export function parseArgs(): ParsedArgs {
       if (!/^\d{1,2}:\d{2}$/.test(value)) {
         program.error("Error: --from parameter must be in HH:MM format");
       }
+      const [hours, minutes] = value.split(":").map(Number);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        program.error("Error: --from parameter has invalid time range (hours: 0-23, minutes: 0-59)");
+      }
       return value;
     })
     .option("-t, --to <time>", "End time in HH:MM format", (value) => {
       if (!/^\d{1,2}:\d{2}$/.test(value)) {
         program.error("Error: --to parameter must be in HH:MM format");
+      }
+      const [hours, minutes] = value.split(":").map(Number);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        program.error("Error: --to parameter has invalid time range (hours: 0-23, minutes: 0-59)");
       }
       return value;
     })
@@ -108,20 +116,29 @@ export function parseArgs(): ParsedArgs {
       "Filter absences by team name(s) (substring, case-insensitive). Accepts a comma-separated list; used with --other"
     )
     .option("-c, --client <client_name>", "Filter own events by Client name (substring, case-insensitive)")
+    .option("-d, --detail", "Show event notes/messages (requires extra API calls)")
+    .option("--month <month>", "Target month (e.g., 2025-02, 02, or 2). Defaults to current month")
+    .option("--previous-month", "Use previous month instead of current month")
     .option("-r, --profile <profile>", "Use specific profile instead of the default one")
     .description("List existing events and absences")
     .action((option) => {
+      if (option.month && option.previousMonth) {
+        program.error("Error: --month and --previous-month cannot be used together");
+      }
       // Normalize --team (new) or --team-prefix (legacy) to string[] (comma-separated list supported)
       const rawTeam = option.team ?? (option as any).teamPrefix; // keep backward compatibility
       const teamPrefixes: string[] = (rawTeam ? String(rawTeam).split(",") : [])
         .map((s: string) => s.trim())
         .filter((s: string) => s.length > 0);
 
-      result = { 
-        command: "list", 
-        other: !!option.other, 
+      result = {
+        command: "list",
+        other: !!option.other,
         teamPrefixes: teamPrefixes.length ? teamPrefixes : undefined,
         client: option.client,
+        detail: !!option.detail,
+        month: option.month,
+        previousMonth: !!option.previousMonth,
         profile: option.profile
       } as const;
     });
