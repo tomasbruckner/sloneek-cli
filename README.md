@@ -114,6 +114,20 @@ List what you logged for current month
 ```bash
 # show what you have logged this month
 sloneek list
+
+# show a specific month
+sloneek list --month 2       # February of current year
+sloneek list --month 2025-02 # February 2025
+
+# show previous month
+sloneek list --previous-month
+```
+
+Show event notes/messages alongside the table (requires extra API calls per event)
+
+```bash
+# show events with notes
+sloneek list --detail
 ```
 
 Filter your own work events by Client name (absences are hidden when filtering)
@@ -144,6 +158,9 @@ sloneek list --other --team SuperTeam
 - `--other` (or `-o`) - Lists other users' absences (current day)
 - `--team <team_name>` (or `-t <team_name>`) - Used only together with `--other` to filter users by their team name (substring, case-insensitive). Accepts a comma-separated list
 - `--client <client_name>` (or `-c <client_name>`) - Filter your own work events by Client name (substring, case-insensitive). When used, absences are hidden from the list
+- `--detail` (or `-d`) - Show event notes/messages in an extra column (requires extra API calls per scheduled event)
+- `--month <month>` - Target month (e.g., `2025-02`, `02`, or `2`). Defaults to current month
+- `--previous-month` - Use previous month instead of current month (mutually exclusive with `--month`)
 - `--profile <profile>` (or `-r <profile>`) - Use specific profile instead of the active one
 
 ## Creating absences (absence action)
