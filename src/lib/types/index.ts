@@ -65,6 +65,7 @@ type ParsedArgsReportDetail = {
   command: "report-detail";
   user?: string;
   month?: string;
+  project?: string;
 } & BaseCommand;
 
 // New team-report parsed args

@@ -236,11 +236,13 @@ export function parseArgs(): ParsedArgs {
     .option("-u, --user <name|uuid>", "User name or UUID (substring match); if omitted, choose interactively")
     .option("-n, --name <name|uuid>", "Alias for --user: user name or UUID (substring match)")
     .option("--month <month>", "Target month (e.g., 2025-08, 08, or 8). Defaults to current month")
+    .option("-p, --project <name>", "Filter by project name (substring match, case-insensitive)")
     .action((options) => {
       result = {
         command: "report-detail",
         user: options.user ?? options.name,
         month: options.month,
+        project: options.project,
         profile: options.profile,
       } as const;
     });

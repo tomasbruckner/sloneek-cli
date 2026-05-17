@@ -114,6 +114,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     uuid: e.uuid as string,
     started_at: e.started_at as string,
     ended_at: e.ended_at as string,
+    project: (e.client_project?.project_name ?? "") as string,
   }));
 
   const abs = (abResp?.data?.events || [])
@@ -126,7 +127,13 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
       event_type: a.event_type as "full_day" | "half_day" | undefined,
     }));
 
-  const all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+  let all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+
+  if (args.project) {
+    const needle = args.project.trim().toLowerCase();
+    all = all.filter((item) => item.kind === "scheduled" && item.project.toLowerCase().includes(needle));
+    term.cyan(`Project filter: ${args.project}\n`);
+  }
 
   if (all.length === 0) {
     term.red("No events or absences found for the selected month.\n");
