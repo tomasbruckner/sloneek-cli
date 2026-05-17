@@ -415,6 +415,7 @@ interface Config {
 interface AuthenticatedSession {
   accessToken: string;
   profileConfig: ProfileConfig;
+  loginReason: "cache" | "expired" | "first_login";
 }
 
 interface ProgressCallback {

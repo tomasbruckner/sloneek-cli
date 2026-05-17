@@ -10,9 +10,12 @@ export async function ensureAuthenticated(profileName?: string): Promise<Authent
   if (profileConfig.token?.access_token && profileConfig.token?.expires_at) {
     const expiresAt = DateTime.fromISO(profileConfig.token.expires_at);
     if (expiresAt > DateTime.now().plus({ minutes: 1 })) {
-      return { accessToken: profileConfig.token.access_token, profileConfig };
+      return { accessToken: profileConfig.token.access_token, profileConfig, loginReason: "cache" };
     }
   }
+
+  // Capture whether there was a previous token before mutating
+  const hadPreviousToken = !!profileConfig.token?.access_token;
 
   const loginResponse = await apiCall<LoginResponse>("https://api2.sloneek.com/auth/login", {
     method: "POST",
@@ -32,5 +35,5 @@ export async function ensureAuthenticated(profileName?: string): Promise<Authent
     true,
   );
 
-  return { accessToken, profileConfig: updatedProfile };
+  return { accessToken, profileConfig: updatedProfile, loginReason: hadPreviousToken ? "expired" : "first_login" };
 }

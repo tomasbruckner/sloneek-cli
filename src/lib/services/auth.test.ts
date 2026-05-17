@@ -41,10 +41,10 @@ const loginResponse = {
   },
 };
 
-beforeEach(() => vi.clearAllMocks());
-
 describe("ensureAuthenticated", () => {
-  it("returns cached token when not expired without writing to terminal", async () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns cached token and skips network call when token is valid", async () => {
     const profile = makeProfile(validToken);
     mockedReadConfig.mockResolvedValue({ profiles: { _default: profile } } as Config);
 
@@ -52,6 +52,7 @@ describe("ensureAuthenticated", () => {
 
     expect(session.accessToken).toBe("cached-token");
     expect(session.profileConfig.user.uuid).toBe("u1");
+    expect(session.loginReason).toBe("cache");
     expect(mockedApiCall).not.toHaveBeenCalled();
   });
 
@@ -66,6 +67,7 @@ describe("ensureAuthenticated", () => {
     const session = await ensureAuthenticated();
 
     expect(session.accessToken).toBe("new-token");
+    expect(session.loginReason).toBe("expired");
     expect(mockedWriteConfig).toHaveBeenCalledTimes(1);
   });
 
@@ -75,18 +77,21 @@ describe("ensureAuthenticated", () => {
 
     const session = await ensureAuthenticated();
     expect(session.accessToken).toBe("new-token");
+    expect(session.loginReason).toBe("first_login");
   });
 
   it("uses named profile when provided", async () => {
     mockedReadConfig.mockResolvedValue({ profiles: { work: makeProfile(validToken) } } as Config);
     const session = await ensureAuthenticated("work");
     expect(session.accessToken).toBe("cached-token");
+    expect(session.loginReason).toBe("cache");
   });
 
   it("falls back to _default when named profile is missing", async () => {
     mockedReadConfig.mockResolvedValue({ profiles: { _default: makeProfile(validToken) } } as Config);
     const session = await ensureAuthenticated("ghost");
     expect(session.accessToken).toBe("cached-token");
+    expect(session.loginReason).toBe("cache");
   });
 
   it("re-authenticates when token expires within 1 minute", async () => {
@@ -99,5 +104,6 @@ describe("ensureAuthenticated", () => {
 
     const session = await ensureAuthenticated();
     expect(session.accessToken).toBe("new-token");
+    expect(session.loginReason).toBe("expired");
   });
 });
