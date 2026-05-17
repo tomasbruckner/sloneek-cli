@@ -1,16 +1,9 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { getAbsences, getEventDetail, getEvents, fetchAbsenceReportCalendarOptions } from "../utils/api";
 import { authenticate } from "../utils/login";
-import {
-  calculateDurationMinutes,
-  formatHours,
-  getCurrentDay,
-  getMonthRangePrague,
-  getStartDay,
-  isSameDay,
-  isWorkDay,
-} from "../utils/time";
+import { calculateDurationMinutes, formatHours, getMonthRangePrague } from "../utils/time";
+import { getMonthEvents, getOtherUsersAbsencesToday } from "../services/events";
+import type { MonthEvents, OtherUserAbsence } from "../services/events";
 
 const FULL_DAY_ABSENCE_OFFSET_MINUTES = 30;
 
@@ -27,139 +20,58 @@ export async function listEventsAction(config: ProfileConfig, args: ParsedArgsLi
 
 async function showCurrentUser(config: ProfileConfig, accessToken: string, args?: ParsedArgsList) {
   const { isoStart, isoEnd, label } = getMonthRangePrague(args?.month, args?.previousMonth);
+  const range: MonthRange = { isoStart, isoEnd, rangeLabel: label };
   const detail = args?.detail;
 
   term.cyan(`Fetching events for ${label}...\n`);
 
-  const [scheduledResponse, absenceResponse] = await Promise.all([
-    getEvents(
-      {
-        interval_starting_at: isoStart,
-        interval_ending_at: isoEnd,
-        users_uuids: [config.user.uuid],
-        quick_filter: null,
-      },
-      accessToken,
-    ),
-    getAbsences(
-      {
-        interval_starting_at: isoStart,
-        interval_ending_at: isoEnd,
-        users_uuids: [config.user.uuid],
-        planning_events_uuids: [config.planningEvent.detail_uuid],
-        quick_filter: null,
-      },
-      accessToken,
-    ),
-  ]);
-
-  let scheduledEvents: ScheduledEvent[] = (scheduledResponse.data?.events || []).map(
-    (event: any): ScheduledEvent => ({
-      ...event,
-      type: "scheduled",
-      displayClient: event.client?.name || "N/A",
-      displayProject: event.client_project?.project_name || "N/A",
-      displayType: "Work",
-    }),
-  );
-
-  // If --client is provided, filter only scheduled events for matching client name (case-insensitive)
-  const clientFilter = args?.client?.toLowerCase().trim();
-  if (clientFilter) {
-    scheduledEvents = scheduledEvents.filter((ev) => (ev.client?.name || ev.displayClient || "").toLowerCase().includes(clientFilter));
+  if (detail) {
+    console.log("Fetching event details...");
   }
 
-  const expandedAbsenceEvents: AbsenceEvent[] = [];
-
-  (absenceResponse.data?.events || []).forEach((event) => {
-    if (event.type === "in_work") {
-      return;
-    }
-
-    if (isSameDay(event.started_at, event.ended_at)) {
-      if (isWorkDay(event.started_at)) {
-        expandedAbsenceEvents.push({
-          ...event,
-          type: "absence",
-          displayClient: "—",
-          displayProject: event.user_absence_event?.absence_event_name || "N/A",
-          displayType: "Absence",
-        });
-      }
-    } else {
-      let currentDate = getStartDay(event.started_at);
-      const lastDate = getStartDay(event.ended_at);
-
-      while (currentDate <= lastDate) {
-        if (currentDate.weekday <= 5) {
-          const dayEndTime = currentDate.plus({
-            hours: 23,
-            minutes: 59,
-            seconds: 59,
-          });
-
-          expandedAbsenceEvents.push({
-            ...event,
-            started_at: currentDate.toISO({ suppressMilliseconds: true })!,
-            ended_at: dayEndTime.toISO({ suppressMilliseconds: true })!,
-            type: "absence",
-            displayClient: "—",
-            displayProject: event.user_absence_event?.absence_event_name || "N/A",
-            displayType: "Absence",
-          });
-        }
-        currentDate = currentDate.plus({ days: 1 });
-      }
-    }
+  const result = await getMonthEvents(config, accessToken, range, {
+    includeNotes: detail,
+    clientFilter: args?.client,
   });
 
-  // Build final events list; when client filter is active, we only display scheduled (work) events
-  const allEvents: ApiEvent[] = (
-    clientFilter ? scheduledEvents : [...scheduledEvents, ...expandedAbsenceEvents]
-  ).sort((a, b) => {
-    return new Date(a.started_at).getTime() - new Date(b.started_at).getTime();
-  });
-
-  if (allEvents.length === 0) {
+  if (result.allEvents.length === 0) {
     term.red("No events found.\n");
     return;
   }
 
-  // Fetch notes for scheduled events when --detail flag is used
-  const eventNotes: Record<string, string> = {};
-  if (detail) {
-    console.log("Fetching event details...");
-    for (const event of scheduledEvents) {
-      if ((event as any).uuid) {
-        try {
-          const detailResponse = await getEventDetail((event as any).uuid, accessToken);
-          const note = detailResponse.data?.scheduled_event_data?.note;
-          if (note) {
-            eventNotes[(event as any).uuid] = note;
-          }
-        } catch {
-          // Skip if detail fetch fails
-        }
-      }
-    }
+  renderEventsTable(result, detail);
+  renderTotals(result);
+}
+
+async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
+  const allEvents = await getOtherUsersAbsencesToday(accessToken, teamPrefixes);
+
+  if (allEvents.length === 0) {
+    term.red("No absences found.\n");
+    return;
   }
 
-  // Create a table with headers
+  renderOtherUsersTable(allEvents);
+}
+
+// ─── Render helpers ───────────────────────────────────────────────────────────
+
+function renderEventsTable(result: MonthEvents, detail?: boolean) {
+  const { allEvents, scheduledEvents, eventNotes } = result;
+
   const headers = detail
     ? ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
     : ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
 
-  // Create table data
-  const tableData = [headers];
+  const tableData: string[][] = [headers];
 
-  // Compute total minutes per day with the same logic as monthly totals
+  // Compute total minutes per day
   const totalMinutesByDate: Record<string, number> = {};
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
     let durationMinutes = calculateDurationMinutes(startTime, endTime);
 
-    // Apply the same 30-minute deduction for full-day absences
     const isFullDay = event.type === "absence" && event.event_type === "full_day";
     if (isFullDay) {
       durationMinutes -= 30;
@@ -180,7 +92,6 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     const timeRange = `${startTime.toFormat("HH:mm")}-${endTime.toFormat("HH:mm")}`;
     const typeIndicator = event.type === "scheduled" ? "Work" : "Absence";
 
-    // Truncate long names for better table formatting
     const truncatedClient =
       event.displayClient.length > 25 ? event.displayClient.substring(0, 22) + "..." : event.displayClient;
     const truncatedProject =
@@ -201,7 +112,6 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     visited[date] = true;
   });
 
-  // Display the table
   term.table(tableData, {
     hasBorder: true,
     contentHasMarkup: true,
@@ -209,8 +119,11 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     width: detail ? 140 : 100,
     fit: true,
   });
+}
 
-  // Calculate total hours for logs and absences
+function renderTotals(result: MonthEvents) {
+  const { allEvents, scheduledEvents, expandedAbsenceEvents } = result;
+
   let totalLogMinutes = 0;
   let totalAbsenceMinutes = 0;
 
@@ -219,10 +132,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
     let durationMinutes = calculateDurationMinutes(startTime, endTime);
 
-    // Check if this is a full-day absence by event_type
     const isFullDay = event.type === "absence" && event.event_type === "full_day";
-
-    // Full-day absences span 23:59:59 but represent 8h workdays with 30min lunch break
     if (isFullDay) {
       durationMinutes -= FULL_DAY_ABSENCE_OFFSET_MINUTES;
     }
@@ -246,52 +156,9 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
   );
 }
 
-async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
-  const { isoStart, isoEnd } = getCurrentDay();
-
-  // Fetch absence report calendar options to get all users UUIDs
-  const absCalOpts = await fetchAbsenceReportCalendarOptions(accessToken);
-  const usersUuids: string[] = [];
-  for (const group of absCalOpts?.data?.users_select ?? []) {
-    for (const u of group.users ?? []) {
-      if (u?.uuid) usersUuids.push(u.uuid);
-    }
-  }
-
-  const filtersLc = (teamPrefixes || []).map((s) => s.toLowerCase());
-
-  const allEvents = (
-    (
-      await getAbsences(
-        {
-          interval_starting_at: isoStart,
-          interval_ending_at: isoEnd,
-          users_uuids: usersUuids,
-          quick_filter: null,
-        },
-        accessToken,
-      )
-    ).data.events ?? []
-  )
-    .filter((x) => {
-      const teamName = x.user?.team?.name;
-      if (!teamName) return true; // keep users without a team
-      if (filtersLc.length === 0) return true; // no filters => include all
-      const teamLc = teamName.toLowerCase();
-      return filtersLc.some((f) => teamLc.includes(f));
-    })
-    .sort((a, b) => a.user.full_name.localeCompare(b.user.full_name));
-
-  if (allEvents.length === 0) {
-    term.red("No absences found.\n");
-    return;
-  }
-
-  // Create a table with headers
+function renderOtherUsersTable(allEvents: OtherUserAbsence[]) {
   const headers = ["Who", "Team", "Type", "From", "Today", "Ends"];
-
-  // Create table data
-  const tableData = [headers];
+  const tableData: string[][] = [headers];
 
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
@@ -319,7 +186,6 @@ async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
     ]);
   });
 
-  // Display the table
   term.table(tableData, {
     hasBorder: true,
     contentHasMarkup: true,

@@ -1,13 +1,7 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
-import {
-  fetchCalendarOptions,
-  getAbsences,
-  getEvents,
-  fetchAbsenceDetail,
-  fetchScheduledEventDetail,
-} from "../utils/api";
+import { fetchCalendarOptions } from "../utils/api";
 import {
   calculateDurationMinutes,
   formatHours,
@@ -15,6 +9,8 @@ import {
   resolveCalendarUserId,
   resolveCalendarUserName,
 } from "../utils/time";
+import { getUserMonthlyDetail } from "../services/events";
+import type { ScheduledEventWithNote, AbsenceWithNote, UserMonthlyDetail } from "../services/events";
 
 export async function reportDetailAction(_config: ProfileConfig, args: ParsedArgsReportDetail): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -85,53 +81,25 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
 
   term.green(`User selected: ${user.name} (${user.uuid})${user.team ? " – " + user.team : ""}\n`);
 
-  const { isoStart, isoEnd, monthStart } = getMonthRangePrague(args.month);
+  const { isoStart, isoEnd, monthStart, label } = getMonthRangePrague(args.month);
+  const range: MonthRange = { isoStart, isoEnd, rangeLabel: label };
   term.cyan(`Fetching events and absences for ${monthStart.toFormat("MMMM yyyy")}...\n`);
 
-  const [evResp, abResp] = await Promise.all([
-    getEvents(
-      {
-        interval_starting_at: isoStart,
-        interval_ending_at: isoEnd,
-        users_uuids: [user.uuid],
-        quick_filter: null,
-      },
-      accessToken,
-    ),
-    getAbsences(
-      {
-        interval_starting_at: isoStart,
-        interval_ending_at: isoEnd,
-        users_uuids: [user.uuid],
-        quick_filter: null,
-      },
-      accessToken,
-    ),
-  ]);
+  term.cyan("Fetching detail notes...\n");
 
-  const sched = (evResp?.data?.events || []).map((e: any) => ({
-    kind: "scheduled" as const,
-    uuid: e.uuid as string,
-    started_at: e.started_at as string,
-    ended_at: e.ended_at as string,
-    project: (e.client_project?.project_name ?? "") as string,
-  }));
+  const detail = await getUserMonthlyDetail(accessToken, user.uuid, range);
 
-  const abs = (abResp?.data?.events || [])
-    .filter((a: any) => a.type !== "in_work")
-    .map((a: any) => ({
-      kind: "absence" as const,
-      uuid: a.uuid as string,
-      started_at: a.started_at as string,
-      ended_at: a.ended_at as string,
-      event_type: a.event_type as "full_day" | "half_day" | undefined,
-    }));
-
-  let all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+  // Apply --project filter (UI concern: filter after service returns)
+  let { scheduledEvents, absences } = detail;
+  let all: (ScheduledEventWithNote | AbsenceWithNote)[] = [...scheduledEvents, ...absences].sort(
+    (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
+  );
 
   if (args.project) {
     const needle = args.project.trim().toLowerCase();
     all = all.filter((item) => item.kind === "scheduled" && item.project.toLowerCase().includes(needle));
+    scheduledEvents = all.filter((item): item is ScheduledEventWithNote => item.kind === "scheduled");
+    absences = [];
     term.cyan(`Project filter: ${args.project}\n`);
   }
 
@@ -140,44 +108,23 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     return;
   }
 
-  term.cyan("Fetching detail notes...\n");
-  const notesMap: Record<string, string> = {};
-  const infoMap: Record<string, string> = {};
+  renderDetailTable(all);
+  renderDetailTotals(scheduledEvents, absences, all);
+}
 
-  await Promise.all(
-    all.map(async (item) => {
-      try {
-        if (item.kind === "scheduled") {
-          const d = await fetchScheduledEventDetail(accessToken, item.uuid);
-          const note = d?.data?.scheduled_event_data?.note ?? "";
-          const proj = d?.data?.scheduled_event_data?.client_project?.project_name ?? "";
-          notesMap[item.uuid] = String(note ?? "");
-          infoMap[item.uuid] = String(proj ?? "");
-        } else {
-          const d = await fetchAbsenceDetail(accessToken, item.uuid);
-          const note = d?.data?.absence_data?.note ?? "";
-          const absName = d?.data?.absence_data?.user_absence_event?.absence_event_name ?? "";
-          notesMap[item.uuid] = String(note ?? "");
-          infoMap[item.uuid] = String(absName ?? "");
-        }
-      } catch (e) {
-        notesMap[item.uuid] = notesMap[item.uuid] ?? "";
-        infoMap[item.uuid] = infoMap[item.uuid] ?? "";
-      }
-    }),
-  );
+// ─── Render helpers ───────────────────────────────────────────────────────────
 
+function renderDetailTable(all: (ScheduledEventWithNote | AbsenceWithNote)[]) {
   const headers = ["Date", "Total", "Time", "Type", "Project/Absence", "Note"];
   const rows: string[][] = [headers];
 
-  // Compute total minutes per day (keyed by the same formatted date string used in the table)
+  // Compute total minutes per day
   const totalMinutesByDate: Record<string, number> = {};
   for (const item of all) {
     const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
     const e = DateTime.fromISO(item.ended_at).setZone("Europe/Prague");
     const dateKey = s.toFormat("dd.MM.yyyy ccc");
     let minutes = calculateDurationMinutes(s, e);
-    // Apply the same 30-minute deduction for full-day absences as in list action
     const isFullDayAbsence = item.kind === "absence" && item.event_type === "full_day";
     if (isFullDayAbsence) {
       minutes -= 30;
@@ -195,8 +142,8 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     const time = `${s.toFormat("HH:mm")}-${e.toFormat("HH:mm")}`;
     const type = item.kind === "scheduled" ? "Work" : "Absence";
     // Preserve original note including newlines; normalize CRLF to LF
-    const rawNote = String(notesMap[item.uuid] ?? "").replace(/\r\n/g, "\n");
-    const info = String(infoMap[item.uuid] ?? "");
+    const rawNote = String(item.note ?? "").replace(/\r\n/g, "\n");
+    const info = String(item.info ?? "");
 
     const totalForDay = !seenDates.has(date) ? fmtTotal(totalMinutesByDate[date] || 0) : "";
     seenDates.add(date);
@@ -211,10 +158,16 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     // Use terminal default width; allow multiline notes without our own truncation
     fit: true,
   });
+}
 
-  // Calculate total hours for logs and absences (same logic as list action)
+function renderDetailTotals(
+  scheduledEvents: ScheduledEventWithNote[],
+  absences: AbsenceWithNote[],
+  all: (ScheduledEventWithNote | AbsenceWithNote)[],
+) {
   let totalLogMinutes = 0;
   let totalAbsenceMinutes = 0;
+
   for (const item of all) {
     const s = DateTime.fromISO(item.started_at).setZone("Europe/Prague");
     const e = DateTime.fromISO(item.ended_at).setZone("Europe/Prague");
@@ -223,7 +176,8 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
     if (isFullDayAbsence) {
       minutes -= 30;
     }
-    if (item.kind === "scheduled") totalLogMinutes += minutes; else totalAbsenceMinutes += minutes;
+    if (item.kind === "scheduled") totalLogMinutes += minutes;
+    else totalAbsenceMinutes += minutes;
   }
 
   const logHours = totalLogMinutes / 60;
@@ -232,8 +186,8 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
   const totalAbsenceHours = Number.isInteger(absenceHours) ? absenceHours.toString() : absenceHours.toFixed(1);
 
   term(
-    `\nTotal: ${all.length} events (${sched.length} work, ${abs.length} absence)\n` +
-      `Hours: ${totalLogHours}h of logs, ${totalAbsenceHours}h of absences\n`
+    `\nTotal: ${all.length} events (${scheduledEvents.length} work, ${absences.length} absence)\n` +
+      `Hours: ${totalLogHours}h of logs, ${totalAbsenceHours}h of absences\n`,
   );
   term("\n");
 }
