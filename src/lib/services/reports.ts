@@ -131,9 +131,6 @@ export async function getReport(
   const userTeamMap: Record<string, string> = {};
   for (const u of users) userTeamMap[u.uuid] = u.team;
 
-  const teamFilters = (filters.teamPrefixes || []).map((s) => s.toLowerCase().trim()).filter((s) => s.length > 0);
-  const nameFilter = (filters.namePrefix || "").toLowerCase().trim();
-
   const evResp = await getEvents(
     {
       interval_starting_at: range.isoStart,
@@ -144,16 +141,11 @@ export async function getReport(
     accessToken,
   );
 
-  let events: any[] = evResp?.data?.events ?? [];
-
-  // Defensive filter if backend returns extra users (only when filters are active — original behavior)
-  if (teamFilters.length > 0 || nameFilter) {
-    const allowed = new Set(usersUuids);
-    events = events.filter((e) => {
-      const uid = e.user?.uuid;
-      return !uid || allowed.has(uid);
-    });
-  }
+  const allowed = new Set(usersUuids);
+  let events: any[] = (evResp?.data?.events ?? []).filter((e) => {
+    const uid = e.user?.uuid;
+    return !uid || allowed.has(uid);
+  });
 
   // Sort by start time
   events.sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
@@ -225,7 +217,7 @@ export async function getReportSummary(
         quick_filter: null,
       },
       accessToken,
-    ).catch(() => ({ data: { events: [] } })),
+    ).catch((): AbsenceEventsResponse => ({ data: { events: [] } })),
     fetchHolidaySet(accessToken, usersUuids, fromDate, toDate),
   ]);
 
@@ -250,7 +242,7 @@ export async function getReportSummary(
   }
 
   // Sum absences per user (with full-day deduction and workday / holiday filter)
-  const absences: any[] = (absResp as any)?.data?.events || [];
+  const absences = absResp?.data?.events || [];
   for (const a of absences) {
     if (a.type === "in_work") continue;
     const uid: string | undefined = a.user?.uuid;
@@ -344,7 +336,7 @@ export async function getValidateReport(
         quick_filter: null,
       },
       accessToken,
-    ).catch(() => ({ data: { events: [] } })),
+    ).catch((): AbsenceEventsResponse => ({ data: { events: [] } })),
     fetchHolidaySet(accessToken, usersUuids, fromDate, toDate),
   ]);
 
@@ -392,7 +384,7 @@ export async function getValidateReport(
   }
 
   // Mark days covered by approved absences (skip in_work)
-  const absences: any[] = (absResp as any)?.data?.events || [];
+  const absences = absResp?.data?.events || [];
   for (const a of absences) {
     if (a.type === "in_work") continue;
     const uid: string | undefined = a.user?.uuid;

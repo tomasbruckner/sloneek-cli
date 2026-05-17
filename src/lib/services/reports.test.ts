@@ -443,9 +443,11 @@ describe("getValidateReport", () => {
   });
 
   it("users with approved absence on a workday are NOT counted as missing that day", async () => {
+    // isoEnd must be May 5 so startOf(isoEnd)=May 5, making May 4 included (cursor < May 5).
+    // The absence on May 4 covers that day; May 5 itself is excluded by the exclusive upper bound.
     const smallRange: MonthRange = {
       isoStart: "2026-05-04T00:00:00+02:00",
-      isoEnd: "2026-05-04T23:59:59+02:00",
+      isoEnd: "2026-05-05T23:59:59+02:00",
       rangeLabel: "Day",
     };
 
