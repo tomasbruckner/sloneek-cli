@@ -43,6 +43,10 @@ describe("createLog", () => {
       planning_categories: [],
       started_at: "2026-05-15T08:00:00+02:00",
       ended_at: "2026-05-15T16:00:00+02:00",
+      start_time: "08:00:00+0200",
+      end_time: "16:00:00+0200",
+      // timezone is intentionally the ISO start string (not IANA zone) — the API expects offset info
+      timezone: "2026-05-15T08:00:00+02:00",
       duration: 480,
       note: "did stuff",
       message: "did stuff",

@@ -103,6 +103,8 @@ interface EventBase {
 
 interface ScheduledEvent extends EventBase {
   type: "scheduled";
+  uuid: string;
+  message?: string;
   client?: {
     name: string;
   };

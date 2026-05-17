@@ -129,16 +129,14 @@ export async function getMonthEvents(
     const total = scheduledEvents.length;
     let done = 0;
     for (const event of scheduledEvents) {
-      if ((event as any).uuid) {
-        try {
-          const detailResponse = await getEventDetail((event as any).uuid, accessToken);
-          const note = detailResponse.data?.scheduled_event_data?.note;
-          if (note) {
-            eventNotes[(event as any).uuid] = note;
-          }
-        } catch {
-          // Swallow failed detail fetch — continue processing
+      try {
+        const detailResponse = await getEventDetail(event.uuid, accessToken);
+        const note = detailResponse.data?.scheduled_event_data?.note;
+        if (note) {
+          eventNotes[event.uuid] = note;
         }
+      } catch {
+        // Swallow failed detail fetch — continue processing
       }
       done += 1;
       opts.onProgress?.(done, total);

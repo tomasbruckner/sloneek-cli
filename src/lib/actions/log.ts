@@ -10,13 +10,13 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
   const { message, interactiveClient, interactiveProject, interactiveActivity, day, yesterday, profile } = args;
 
   const accessToken = await authenticate(profile);
-  const input = await resolveLogInput(config, args, accessToken);
+  const { input, display } = await resolveLogInput(config, args, accessToken);
 
   term.cyan("Creating event...\n");
   term.cyan(`User: ${config.user.name}\n`);
-  term.cyan(`Activity: ${input._activityDisplayName}\n`);
-  term.cyan(`Client: ${input._clientDisplayName}\n`);
-  term.cyan(`Project: ${input._projectDisplayName}\n`);
+  term.cyan(`Activity: ${display.activityName}\n`);
+  term.cyan(`Client: ${display.clientName}\n`);
+  term.cyan(`Project: ${display.projectName}\n`);
   term.cyan(`Time: ${args.from || config.workHours.start} - ${args.to || config.workHours.end} (${input.durationMinutes} minutes)\n`);
   term.cyan(`Date: ${DateTime.fromISO(input.startIso).toFormat("yyyy-MM-dd")}\n`);
   term.cyan(`Message: ${message ?? ""}\n\n`);
@@ -26,17 +26,11 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
   term.green("✓ Event created successfully!");
 }
 
-interface ResolvedLogInput extends CreateLogInput {
-  _activityDisplayName: string;
-  _clientDisplayName: string;
-  _projectDisplayName: string;
-}
-
 async function resolveLogInput(
   config: ProfileConfig,
   args: ParsedArgsLog,
   accessToken: string,
-): Promise<ResolvedLogInput> {
+): Promise<{ input: CreateLogInput; display: { activityName: string; clientName: string; projectName: string } }> {
   const { message, interactiveClient, interactiveProject, interactiveActivity, day, yesterday } = args;
 
   let clientUuid: string, clientDisplayName: string, projectUuid: string, projectDisplayName: string;
@@ -114,7 +108,7 @@ async function resolveLogInput(
     .plus({ hours: Math.floor(durationMinutes / 60), minutes: durationMinutes % 60 })
     .toISO({ suppressMilliseconds: true })!;
 
-  return {
+  const input: CreateLogInput = {
     clientUuid,
     projectUuid,
     planningEventUuid,
@@ -127,9 +121,15 @@ async function resolveLogInput(
     durationMinutes,
     durationTime,
     note: message ?? "",
-    _activityDisplayName: activityDisplayName,
-    _clientDisplayName: clientDisplayName,
-    _projectDisplayName: projectDisplayName,
+  };
+
+  return {
+    input,
+    display: {
+      activityName: activityDisplayName,
+      clientName: clientDisplayName,
+      projectName: projectDisplayName,
+    },
   };
 }
 

@@ -34,7 +34,7 @@ export async function logCancelAction(config: ProfileConfig, args?: BaseCommand)
 
     const clientName = worklog.client?.name || "No client";
     const projectName = worklog.client_project?.project_name || "No project";
-    const message = (worklog as any).message || "";
+    const message = worklog.message || "";
 
     return `${startFormatted} - ${endFormatted} | ${clientName} | ${projectName} | ${message}`;
   });
@@ -53,7 +53,7 @@ export async function logCancelAction(config: ProfileConfig, args?: BaseCommand)
     return;
   }
 
-  await cancelLog(accessToken, (selectedWorklog as any).uuid);
+  await cancelLog(accessToken, selectedWorklog.uuid);
 
   term.green("✓ Worklog cancelled successfully\n\n");
 }
