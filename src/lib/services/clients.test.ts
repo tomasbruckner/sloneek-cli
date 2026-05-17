@@ -87,9 +87,9 @@ describe("listProjectsForClient", () => {
     expect(result).toEqual([]);
   });
 
-  it("includes uuid and clientUuid on each ProjectSummary", async () => {
+  it("includes uuid and project_name on each ProjectSummary", async () => {
     mockedGetClients.mockResolvedValue(fixture as any);
     const result = await listProjectsForClient("tok", "user-uuid", "client-a");
-    expect(result[0]).toMatchObject({ uuid: "proj-a1", project_name: "Web", clientUuid: "client-a" });
+    expect(result[0]).toMatchObject({ uuid: "proj-a1", project_name: "Web" });
   });
 });

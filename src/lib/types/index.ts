@@ -92,11 +92,6 @@ interface ClientsResponse {
   data: Client[];
 }
 
-interface ClientProjectSelection {
-  selectedClient: Client | null;
-  selectedProject: Project | null;
-}
-
 interface EventBase {
   started_at: string;
   ended_at: string;
