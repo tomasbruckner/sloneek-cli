@@ -28,15 +28,26 @@ export async function listPlanningEvents(accessToken: string, userUuid: string):
   }));
 }
 
-// ─── CalendarOptions ──────────────────────────────────────────────────────────
+// ─── CalendarUsers ────────────────────────────────────────────────────────────
 
-export interface CalendarUserGroup {
-  teamName: string;
-  users: { uuid?: string; value?: string; fullName?: string; name?: string }[];
+export interface CalendarUserSummary {
+  uuid: string;
+  name: string;
+  team: string;
 }
 
-export async function listCalendarOptions(accessToken: string): Promise<CalendarOptionsResponse> {
-  return fetchCalendarOptions(accessToken);
+export async function listCalendarUsers(accessToken: string): Promise<CalendarUserSummary[]> {
+  const response = await fetchCalendarOptions(accessToken);
+  const result: CalendarUserSummary[] = [];
+  for (const group of response.data?.users || []) {
+    const team = group.team_name || "";
+    for (const u of group.users || []) {
+      const uuid = u.uuid || u.value || "";
+      const name = u.full_name || u.name || "";
+      if (uuid) result.push({ uuid, name, team });
+    }
+  }
+  return result;
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────

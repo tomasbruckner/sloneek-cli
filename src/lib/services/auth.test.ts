@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 
 vi.mock("../utils/api", () => ({
   apiCall: vi.fn(),
+  fetchUsers: vi.fn(),
 }));
 
 vi.mock("../utils/config", () => ({
@@ -10,11 +11,12 @@ vi.mock("../utils/config", () => ({
   writeConfig: vi.fn(),
 }));
 
-import { ensureAuthenticated } from "./auth";
-import { apiCall } from "../utils/api";
+import { ensureAuthenticated, loginWithCredentials, listUsers } from "./auth";
+import { apiCall, fetchUsers } from "../utils/api";
 import { readConfig, writeConfig } from "../utils/config";
 
 const mockedApiCall = vi.mocked(apiCall);
+const mockedFetchUsers = vi.mocked(fetchUsers);
 const mockedReadConfig = vi.mocked(readConfig);
 const mockedWriteConfig = vi.mocked(writeConfig);
 
@@ -105,5 +107,54 @@ describe("ensureAuthenticated", () => {
     const session = await ensureAuthenticated();
     expect(session.accessToken).toBe("new-token");
     expect(session.loginReason).toBe("expired");
+  });
+});
+
+describe("loginWithCredentials", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("calls apiCall with email/password and returns the login data", async () => {
+    const fakeLoginData: LoginInfo = {
+      access_token: "tok123",
+      access_token_expires_at: 9999999999,
+    } as any;
+    mockedApiCall.mockResolvedValue({ data: fakeLoginData });
+
+    const result = await loginWithCredentials("user@example.com", "pass");
+
+    expect(mockedApiCall).toHaveBeenCalledWith(
+      "https://api2.sloneek.com/auth/login",
+      expect.objectContaining({ method: "POST", data: { email: "user@example.com", password: "pass" } }),
+    );
+    expect(result).toBe(fakeLoginData);
+  });
+});
+
+describe("listUsers", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("maps raw user data to UserSummary[] with uuid and name", async () => {
+    mockedFetchUsers.mockResolvedValue({
+      data: [
+        { uuid: "u1", name: "Alice" },
+        { uuid: "u2", name: "Bob" },
+      ],
+    } as any);
+
+    const result = await listUsers("access-token");
+
+    expect(mockedFetchUsers).toHaveBeenCalledWith("access-token");
+    expect(result).toEqual([
+      { uuid: "u1", name: "Alice" },
+      { uuid: "u2", name: "Bob" },
+    ]);
+  });
+
+  it("returns an empty array when the response data is empty", async () => {
+    mockedFetchUsers.mockResolvedValue({ data: [] } as any);
+
+    const result = await listUsers("tok");
+
+    expect(result).toEqual([]);
   });
 });

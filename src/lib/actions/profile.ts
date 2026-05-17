@@ -116,7 +116,7 @@ async function handleProfileRemoval(profileName?: string): Promise<void> {
   term.green(`✓ Profile "${profileToRemove}" has been removed.\n`);
 
   if (renamedRemainingToDefault) {
-    term.cyan(`✓ The remaining profile has been renamed to "_default".\n`);
+    term.green(`✓ The remaining profile has been renamed to "_default".\n`);
   }
 
   term("\n");

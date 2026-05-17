@@ -7,9 +7,12 @@ vi.mock("../utils/api", () => ({
   fetchAbsenceReportCalendarOptions: vi.fn(),
   fetchScheduledEventDetail: vi.fn(),
   fetchAbsenceDetail: vi.fn(),
+  fetchUserEvents: vi.fn(),
+  fetchCalendarOptions: vi.fn(),
+  fetchCategories: vi.fn(),
 }));
 
-import { getMonthEvents, getOtherUsersAbsencesToday, getUserMonthlyDetail } from "./events";
+import { getMonthEvents, getOtherUsersAbsencesToday, getUserMonthlyDetail, listPlanningEvents, listCalendarUsers, listCategories } from "./events";
 import {
   getEvents,
   getAbsences,
@@ -17,6 +20,9 @@ import {
   fetchAbsenceReportCalendarOptions,
   fetchScheduledEventDetail,
   fetchAbsenceDetail,
+  fetchUserEvents,
+  fetchCalendarOptions,
+  fetchCategories,
 } from "../utils/api";
 
 const mockedGetEvents = vi.mocked(getEvents);
@@ -25,6 +31,9 @@ const mockedGetEventDetail = vi.mocked(getEventDetail);
 const mockedFetchAbsCal = vi.mocked(fetchAbsenceReportCalendarOptions);
 const mockedFetchSchedDetail = vi.mocked(fetchScheduledEventDetail);
 const mockedFetchAbsDetail = vi.mocked(fetchAbsenceDetail);
+const mockedFetchUserEvents = vi.mocked(fetchUserEvents);
+const mockedFetchCalendarOptions = vi.mocked(fetchCalendarOptions);
+const mockedFetchCategories = vi.mocked(fetchCategories);
 
 const profile: ProfileConfig = {
   credentials: { email: "x", password: "y" },
@@ -283,5 +292,104 @@ describe("getUserMonthlyDetail", () => {
     // total = 2 sched + 1 abs = 3; each item emits one progress tick
     expect(progress).toHaveLength(3);
     expect(progress[progress.length - 1]).toEqual([3, 3]);
+  });
+});
+
+describe("listPlanningEvents", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("maps raw planning event data to PlanningEventSummary[] and passes arguments through", async () => {
+    mockedFetchUserEvents.mockResolvedValue({
+      data: [
+        { uuid: "item1", planning_event: { uuid: "pe1", display_name: "Work" } },
+        { uuid: "item2", planning_event: { uuid: "pe2", display_name: "Home Office" } },
+      ],
+    } as any);
+
+    const result = await listPlanningEvents("tok", "user-uuid");
+
+    expect(mockedFetchUserEvents).toHaveBeenCalledWith("tok", "user-uuid");
+    expect(result).toEqual([
+      { uuid: "item1", planningEventUuid: "pe1", displayName: "Work" },
+      { uuid: "item2", planningEventUuid: "pe2", displayName: "Home Office" },
+    ]);
+  });
+
+  it("returns an empty array when there are no planning events", async () => {
+    mockedFetchUserEvents.mockResolvedValue({ data: [] } as any);
+
+    const result = await listPlanningEvents("tok", "user-uuid");
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe("listCalendarUsers", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("flattens grouped users into CalendarUserSummary[] with uuid, name, and team", async () => {
+    mockedFetchCalendarOptions.mockResolvedValue({
+      data: {
+        users: [
+          {
+            team_name: "Dev",
+            users: [
+              { uuid: "u1", name: "Alice" },
+              { uuid: "u2", name: "Bob" },
+            ],
+          },
+          {
+            team_name: "Ops",
+            users: [{ uuid: "u3", name: "Carol" }],
+          },
+        ],
+      },
+    } as any);
+
+    const result = await listCalendarUsers("tok");
+
+    expect(mockedFetchCalendarOptions).toHaveBeenCalledWith("tok");
+    expect(result).toEqual([
+      { uuid: "u1", name: "Alice", team: "Dev" },
+      { uuid: "u2", name: "Bob", team: "Dev" },
+      { uuid: "u3", name: "Carol", team: "Ops" },
+    ]);
+  });
+
+  it("returns an empty array when there are no user groups", async () => {
+    mockedFetchCalendarOptions.mockResolvedValue({ data: { users: [] } } as any);
+
+    const result = await listCalendarUsers("tok");
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe("listCategories", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("maps raw categories to CategorySummary[] with uuid and name", async () => {
+    mockedFetchCategories.mockResolvedValue({
+      data: [
+        { uuid: "cat1", name: "Development" },
+        { uuid: "cat2", name: "Meetings" },
+      ],
+    } as any);
+
+    const result = await listCategories("tok");
+
+    expect(mockedFetchCategories).toHaveBeenCalledWith("tok");
+    expect(result).toEqual([
+      { uuid: "cat1", name: "Development" },
+      { uuid: "cat2", name: "Meetings" },
+    ]);
+  });
+
+  it("returns an empty array when there are no categories", async () => {
+    mockedFetchCategories.mockResolvedValue({ data: [] } as any);
+
+    const result = await listCategories("tok");
+
+    expect(result).toEqual([]);
   });
 });

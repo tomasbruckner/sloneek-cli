@@ -1,32 +1,15 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
-import {
-  calculateDurationMinutes,
-  formatHours,
-  getMonthRangePrague,
-  resolveCalendarUserId,
-  resolveCalendarUserName,
-} from "../utils/time";
-import { getUserMonthlyDetail, listCalendarOptions } from "../services/events";
+import { calculateDurationMinutes, formatHours, getMonthRangePrague } from "../utils/time";
+import { getUserMonthlyDetail, listCalendarUsers } from "../services/events";
 import type { ScheduledEventWithNote, AbsenceWithNote } from "../services/events";
 
 export async function reportDetailAction(_config: ProfileConfig, args: ParsedArgsReportDetail): Promise<void> {
   const accessToken = await authenticate(args.profile);
 
   term.cyan("Fetching calendar options (users)...\n");
-  const options = await listCalendarOptions(accessToken);
-  const groups = options?.data?.users ?? [];
-
-  const allUsers: { uuid: string; name: string; team?: string }[] = [];
-  for (const g of groups) {
-    const teamName = g.team_name || "";
-    for (const u of g.users || []) {
-      const uuid = resolveCalendarUserId(u);
-      const name = resolveCalendarUserName(u) || uuid;
-      if (uuid) allUsers.push({ uuid, name, team: teamName });
-    }
-  }
+  const allUsers = await listCalendarUsers(accessToken);
 
   // Sort users by name for a consistent and user-friendly picker order
   allUsers.sort((a, b) => a.name.localeCompare(b.name));
