@@ -1,9 +1,8 @@
-import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
-import { fetchCalendarOptions, getEvents } from "../utils/api";
-import { calculateDurationMinutes, getMonthRangePrague, resolveCalendarUserId } from "../utils/time";
+import { getMonthRangePrague } from "../utils/time";
 import { listClients, type ClientSummary } from "../services/clients";
+import { getTeamProjectReport, type TeamProjectTotals } from "../services/team-reports";
 
 export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsTeamReport): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -92,84 +91,50 @@ export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsT
     }
   }
 
-  term.cyan("Fetching users (calendar options)...\n");
-  const options = await fetchCalendarOptions(accessToken);
-  const usersGroups = options?.data?.users ?? [];
-
-  const usersUuids: string[] = [];
-  usersGroups.forEach((group) => {
-    (group.users || []).forEach((u) => {
-      const id = resolveCalendarUserId(u);
-      if (id) usersUuids.push(id);
-    });
-  });
-
-  if (usersUuids.length === 0) {
-    term.red("No users found in calendar options.\n");
-    return;
-  }
-
   const { isoStart, isoEnd, label } = getMonthRangePrague(args.month, args.previousMonth);
+  const range: MonthRange = { isoStart, isoEnd, rangeLabel: label };
 
   term.cyan(`Fetching scheduled events for ${label}...\n`);
-  const resp = await getEvents(
-    {
-      interval_starting_at: isoStart,
-      interval_ending_at: isoEnd,
-      users_uuids: usersUuids,
-      quick_filter: null,
-    },
-    accessToken,
-  );
 
-  const events: ScheduledEvent[] = (resp.data?.events || []).map((event: any): ScheduledEvent => ({
-    ...event,
-    type: "scheduled",
-    displayClient: event.client?.name || "N/A",
-    displayProject: event.client_project?.project_name || "N/A",
-    displayType: "Work",
-  }));
+  const totals = await getTeamProjectReport(accessToken, range, selectedClient.name, projectNeedles || []);
 
-  const needles = (projectNeedles || []).map((p) => p.toLowerCase());
-  const clientFilterLc = (selectedClient?.name || "").toLowerCase();
-
-  // Aggregate minutes per project (by actual project name in event), restrict to selected client
-  const perProjectMinutes: Record<string, number> = {};
-  let totalMinutes = 0;
-
-  events.forEach((ev) => {
-    const evClient = (ev.client?.name || ev.displayClient || "").toLowerCase();
-    if (clientFilterLc && !evClient.includes(clientFilterLc)) return;
-
-    const projectName = ev.client_project?.project_name || ev.displayProject || "";
-    const pnLc = projectName.toLowerCase();
-    const match = needles.length === 0 || needles.some((n) => pnLc.includes(n));
-    if (!match) return;
-
-    const start = DateTime.fromISO(ev.started_at);
-    const end = DateTime.fromISO(ev.ended_at);
-    const minutes = calculateDurationMinutes(start, end);
-
-    perProjectMinutes[projectName] = (perProjectMinutes[projectName] || 0) + minutes;
-    totalMinutes += minutes;
-  });
-
-  if (totalMinutes === 0) {
+  if (totals.length === 0) {
     term.yellow("No matching project worklogs found in the selected interval.\n");
     return;
   }
 
-  // Print results
+  renderTeamReportTable(totals, {
+    label,
+    isoStart,
+    isoEnd,
+    clientName: selectedClient.name,
+    projectNeedles: projectNeedles || [],
+  });
+}
+
+// ─── Local render helper ──────────────────────────────────────────────────────
+
+interface RenderContext {
+  label: string;
+  isoStart: string;
+  isoEnd: string;
+  clientName: string;
+  projectNeedles: string[];
+}
+
+function renderTeamReportTable(totals: TeamProjectTotals[], ctx: RenderContext): void {
   term("\n");
   term.cyan("Team project hours summary\n");
-  term.cyan(`Interval: ${label} (${isoStart} .. ${isoEnd})\n`);
-  term.cyan(`Client: ${selectedClient?.name}\n`);
-  term.cyan(`Projects filter: ${(projectNeedles || []).join(", ")}\n\n`);
+  term.cyan(`Interval: ${ctx.label} (${ctx.isoStart} .. ${ctx.isoEnd})\n`);
+  term.cyan(`Client: ${ctx.clientName}\n`);
+  term.cyan(`Projects filter: ${ctx.projectNeedles.join(", ")}\n\n`);
 
-  const entries = Object.entries(perProjectMinutes).sort((a, b) => b[1] - a[1]);
-  entries.forEach(([name, minutes]) => {
-    const hours = (minutes / 60).toFixed(2);
-    term.green(`- ${name}: ${hours} h\n`);
+  const totalMinutes = totals.reduce((acc, t) => acc + t.totalMinutes, 0);
+
+  const sorted = [...totals].sort((a, b) => b.totalMinutes - a.totalMinutes);
+  sorted.forEach(({ projectName, totalMinutes: mins }) => {
+    const hours = (mins / 60).toFixed(2);
+    term.green(`- ${projectName}: ${hours} h\n`);
   });
 
   term("\n");

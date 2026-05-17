@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.15.1] - 2026-05-17
+
+### Changed
+- Extracted team project aggregation into `services/team-reports.ts`. CLI behavior unchanged.
+
 ## [1.15.0] - 2026-05-17
 
 ### Changed
@@ -308,6 +313,7 @@ Initial release.
 [1.7.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.6.1...v1.7.0
+[1.15.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.15.0...v1.15.1
 [1.6.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.4.0...v1.5.0
