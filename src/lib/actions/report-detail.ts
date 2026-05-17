@@ -10,7 +10,7 @@ import {
   resolveCalendarUserName,
 } from "../utils/time";
 import { getUserMonthlyDetail } from "../services/events";
-import type { ScheduledEventWithNote, AbsenceWithNote, UserMonthlyDetail } from "../services/events";
+import type { ScheduledEventWithNote, AbsenceWithNote } from "../services/events";
 
 export async function reportDetailAction(_config: ProfileConfig, args: ParsedArgsReportDetail): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -83,9 +83,7 @@ export async function reportDetailAction(_config: ProfileConfig, args: ParsedArg
 
   const { isoStart, isoEnd, monthStart, label } = getMonthRangePrague(args.month);
   const range: MonthRange = { isoStart, isoEnd, rangeLabel: label };
-  term.cyan(`Fetching events and absences for ${monthStart.toFormat("MMMM yyyy")}...\n`);
-
-  term.cyan("Fetching detail notes...\n");
+  term.cyan(`Fetching events, absences, and detail notes for ${monthStart.toFormat("MMMM yyyy")}...\n`);
 
   const detail = await getUserMonthlyDetail(accessToken, user.uuid, range);
 

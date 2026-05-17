@@ -286,50 +286,56 @@ export async function getUserMonthlyDetail(
       info: "",
     }));
 
-  const all = [...sched, ...abs].sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
-
-  // Fetch detail notes for each item; silently swallow failures
+  // Fetch detail notes; silently swallow failures and report progress
   const notesMap: Record<string, string> = {};
   const infoMap: Record<string, string> = {};
 
-  await Promise.all(
-    all.map(async (item) => {
-      try {
-        if (item.kind === "scheduled") {
-          const d = await fetchScheduledEventDetail(accessToken, item.uuid);
-          const note = d?.data?.scheduled_event_data?.note ?? "";
-          const proj = d?.data?.scheduled_event_data?.client_project?.project_name ?? "";
-          notesMap[item.uuid] = String(note ?? "");
-          infoMap[item.uuid] = String(proj ?? "");
-        } else {
-          const d = await fetchAbsenceDetail(accessToken, item.uuid);
-          const note = d?.data?.absence_data?.note ?? "";
-          const absName = d?.data?.absence_data?.user_absence_event?.absence_event_name ?? "";
-          notesMap[item.uuid] = String(note ?? "");
-          infoMap[item.uuid] = String(absName ?? "");
-        }
-      } catch {
-        notesMap[item.uuid] = notesMap[item.uuid] ?? "";
-        infoMap[item.uuid] = infoMap[item.uuid] ?? "";
-      }
-    }),
+  const total = sched.length + abs.length;
+  let done = 0;
+  const bump = () => {
+    done += 1;
+    onProgress?.(done, total);
+  };
+
+  const schedPromises = sched.map((item) =>
+    fetchScheduledEventDetail(accessToken, item.uuid)
+      .then((d) => {
+        notesMap[item.uuid] = d?.data?.scheduled_event_data?.note ?? "";
+        infoMap[item.uuid] = d?.data?.scheduled_event_data?.client_project?.project_name ?? "";
+      })
+      .catch(() => {
+        notesMap[item.uuid] = "";
+        infoMap[item.uuid] = "";
+      })
+      .finally(bump),
   );
 
-  const scheduledEvents: ScheduledEventWithNote[] = sched
-    .filter((item) => all.some((a) => a.uuid === item.uuid))
-    .map((item) => ({
-      ...item,
-      note: notesMap[item.uuid] ?? "",
-      info: infoMap[item.uuid] ?? "",
-    }));
+  const absPromises = abs.map((item) =>
+    fetchAbsenceDetail(accessToken, item.uuid)
+      .then((d) => {
+        notesMap[item.uuid] = d?.data?.absence_data?.note ?? "";
+        infoMap[item.uuid] = d?.data?.absence_data?.user_absence_event?.absence_event_name ?? "";
+      })
+      .catch(() => {
+        notesMap[item.uuid] = "";
+        infoMap[item.uuid] = "";
+      })
+      .finally(bump),
+  );
 
-  const absences: AbsenceWithNote[] = abs
-    .filter((item) => all.some((a) => a.uuid === item.uuid))
-    .map((item) => ({
-      ...item,
-      note: notesMap[item.uuid] ?? "",
-      info: infoMap[item.uuid] ?? "",
-    }));
+  await Promise.all([...schedPromises, ...absPromises]);
+
+  const scheduledEvents: ScheduledEventWithNote[] = sched.map((item) => ({
+    ...item,
+    note: notesMap[item.uuid] ?? "",
+    info: infoMap[item.uuid] ?? "",
+  }));
+
+  const absences: AbsenceWithNote[] = abs.map((item) => ({
+    ...item,
+    note: notesMap[item.uuid] ?? "",
+    info: infoMap[item.uuid] ?? "",
+  }));
 
   return {
     scheduledEvents,

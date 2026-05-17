@@ -252,6 +252,36 @@ describe("getUserMonthlyDetail", () => {
     mockedFetchSchedDetail.mockRejectedValue(new Error("boom"));
 
     const result = await getUserMonthlyDetail("tok", "user-uuid", range);
+    expect(result.scheduledEvents).toHaveLength(1);
     expect(result.scheduledEvents[0].note).toBe("");
+  });
+
+  it("calls onProgress once per item (scheduled + absence) as details resolve", async () => {
+    mockedGetEvents.mockResolvedValue({
+      data: {
+        events: [
+          { uuid: "e1", started_at: "2026-05-10T08:00:00+02:00", ended_at: "2026-05-10T16:00:00+02:00", client_project: { project_name: "Web" } },
+          { uuid: "e2", started_at: "2026-05-11T08:00:00+02:00", ended_at: "2026-05-11T16:00:00+02:00", client_project: { project_name: "Web" } },
+        ],
+      },
+    } as any);
+    mockedGetAbsences.mockResolvedValue({
+      data: {
+        events: [
+          { uuid: "a1", type: "vacation", event_type: "full_day", started_at: "2026-05-12T00:00:00+02:00", ended_at: "2026-05-12T23:59:59+02:00", user_absence_event: { absence_event_name: "Vacation" } },
+        ],
+      },
+    } as any);
+    mockedFetchSchedDetail
+      .mockResolvedValueOnce({ data: { scheduled_event_data: { note: "first" } } } as any)
+      .mockResolvedValueOnce({ data: { scheduled_event_data: { note: "second" } } } as any);
+    mockedFetchAbsDetail.mockResolvedValue({ data: { absence_data: { note: "away" } } } as any);
+
+    const progress: Array<[number, number]> = [];
+    await getUserMonthlyDetail("tok", "user-uuid", range, (d, t) => progress.push([d, t]));
+
+    // total = 2 sched + 1 abs = 3; each item emits one progress tick
+    expect(progress).toHaveLength(3);
+    expect(progress[progress.length - 1]).toEqual([3, 3]);
   });
 });

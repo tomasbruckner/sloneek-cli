@@ -26,7 +26,7 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
   term.cyan(`Fetching events for ${label}...\n`);
 
   if (detail) {
-    console.log("Fetching event details...");
+    term.cyan("Fetching event details...\n");
   }
 
   const result = await getMonthEvents(config, accessToken, range, {
@@ -39,8 +39,9 @@ async function showCurrentUser(config: ProfileConfig, accessToken: string, args?
     return;
   }
 
-  renderEventsTable(result, detail);
-  renderTotals(result);
+  const durations = calculateEventDurations(result.allEvents);
+  renderEventsTable(result, durations, detail);
+  renderTotals(result, durations);
 }
 
 async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
@@ -56,17 +57,17 @@ async function showOtherUsers(accessToken: string, teamPrefixes?: string[]) {
 
 // ─── Render helpers ───────────────────────────────────────────────────────────
 
-function renderEventsTable(result: MonthEvents, detail?: boolean) {
-  const { allEvents, scheduledEvents, eventNotes } = result;
+interface EventDurations {
+  totalMinutesByDate: Record<string, number>;
+  totalLogMinutes: number;
+  totalAbsenceMinutes: number;
+}
 
-  const headers = detail
-    ? ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
-    : ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
-
-  const tableData: string[][] = [headers];
-
-  // Compute total minutes per day
+function calculateEventDurations(allEvents: ApiEvent[]): EventDurations {
   const totalMinutesByDate: Record<string, number> = {};
+  let totalLogMinutes = 0;
+  let totalAbsenceMinutes = 0;
+
   allEvents.forEach((event) => {
     const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
     const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
@@ -74,12 +75,31 @@ function renderEventsTable(result: MonthEvents, detail?: boolean) {
 
     const isFullDay = event.type === "absence" && event.event_type === "full_day";
     if (isFullDay) {
-      durationMinutes -= 30;
+      durationMinutes -= FULL_DAY_ABSENCE_OFFSET_MINUTES;
     }
 
     const dateKey = startTime.toFormat("dd.MM.yyyy ccc");
     totalMinutesByDate[dateKey] = (totalMinutesByDate[dateKey] || 0) + Math.max(0, durationMinutes);
+
+    if (event.type === "scheduled") {
+      totalLogMinutes += durationMinutes;
+    } else {
+      totalAbsenceMinutes += durationMinutes;
+    }
   });
+
+  return { totalMinutesByDate, totalLogMinutes, totalAbsenceMinutes };
+}
+
+function renderEventsTable(result: MonthEvents, durations: EventDurations, detail?: boolean) {
+  const { allEvents, scheduledEvents, eventNotes } = result;
+  const { totalMinutesByDate } = durations;
+
+  const headers = detail
+    ? ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details", "Note"]
+    : ["Date", "Total", "Time", "Type", "Client/Absence", "Project/Details"];
+
+  const tableData: string[][] = [headers];
 
   const visited: Record<string, boolean> = {};
   const fmtHoursLabel = (mins: number) => `${formatHours(mins)} hours`;
@@ -121,28 +141,9 @@ function renderEventsTable(result: MonthEvents, detail?: boolean) {
   });
 }
 
-function renderTotals(result: MonthEvents) {
+function renderTotals(result: MonthEvents, durations: EventDurations) {
   const { allEvents, scheduledEvents, expandedAbsenceEvents } = result;
-
-  let totalLogMinutes = 0;
-  let totalAbsenceMinutes = 0;
-
-  allEvents.forEach((event) => {
-    const startTime = DateTime.fromISO(event.started_at).setZone("Europe/Prague");
-    const endTime = DateTime.fromISO(event.ended_at).setZone("Europe/Prague");
-    let durationMinutes = calculateDurationMinutes(startTime, endTime);
-
-    const isFullDay = event.type === "absence" && event.event_type === "full_day";
-    if (isFullDay) {
-      durationMinutes -= FULL_DAY_ABSENCE_OFFSET_MINUTES;
-    }
-
-    if (event.type === "scheduled") {
-      totalLogMinutes += durationMinutes;
-    } else {
-      totalAbsenceMinutes += durationMinutes;
-    }
-  });
+  const { totalLogMinutes, totalAbsenceMinutes } = durations;
 
   const logHours = totalLogMinutes / 60;
   const absenceHours = totalAbsenceMinutes / 60;
