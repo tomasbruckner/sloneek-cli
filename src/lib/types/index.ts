@@ -92,11 +92,6 @@ interface ClientsResponse {
   data: Client[];
 }
 
-interface ClientProjectSelection {
-  selectedClient: Client | null;
-  selectedProject: Project | null;
-}
-
 interface EventBase {
   started_at: string;
   ended_at: string;
@@ -108,6 +103,8 @@ interface EventBase {
 
 interface ScheduledEvent extends EventBase {
   type: "scheduled";
+  uuid: string;
+  message?: string;
   client?: {
     name: string;
   };
@@ -166,7 +163,7 @@ interface EventDetailResponse {
   };
 }
 
-type AbsenceType = "type_in_work" | "type_vacation";
+type AbsenceEventKind = "type_in_work" | "type_vacation";
 
 interface AbsenceOptionsResponse {
   data: AbsenceOption[];
@@ -176,7 +173,7 @@ interface AbsenceOption {
   uuid: string;
   absence_event: {
     display_name: string;
-    type: AbsenceType;
+    type: AbsenceEventKind;
     unit_type: "hours" | "days_and_half_days" | "days";
   };
 }
@@ -410,4 +407,20 @@ interface Config {
   profiles: {
     [key: string]: ProfileConfig;
   };
+}
+
+interface AuthenticatedSession {
+  accessToken: string;
+  profileConfig: ProfileConfig;
+  loginReason: "cache" | "expired" | "first_login";
+}
+
+interface ProgressCallback {
+  (done: number, total: number): void;
+}
+
+interface MonthRange {
+  isoStart: string;
+  isoEnd: string;
+  rangeLabel: string;
 }

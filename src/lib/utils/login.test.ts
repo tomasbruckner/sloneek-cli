@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DateTime } from "luxon";
 
 vi.mock("terminal-kit", () => ({
   terminal: {
@@ -8,131 +7,50 @@ vi.mock("terminal-kit", () => ({
   },
 }));
 
-vi.mock("./api", () => ({
-  apiCall: vi.fn(),
-}));
-
-vi.mock("./config", () => ({
-  readConfig: vi.fn(),
-  writeConfig: vi.fn(),
+vi.mock("../services/auth", () => ({
+  ensureAuthenticated: vi.fn(),
 }));
 
 import { authenticate } from "./login";
-import { apiCall } from "./api";
-import { readConfig, writeConfig } from "./config";
+import { ensureAuthenticated } from "../services/auth";
+import { terminal as term } from "terminal-kit";
 
-const mockedApiCall = vi.mocked(apiCall);
-const mockedReadConfig = vi.mocked(readConfig);
-const mockedWriteConfig = vi.mocked(writeConfig);
+const mockedEnsure = vi.mocked(ensureAuthenticated);
+const mockedCyan = vi.mocked(term.cyan);
+const mockedGreen = vi.mocked(term.green);
 
-const makeProfile = (token?: ProfileConfig["token"]): ProfileConfig => ({
-  credentials: { email: "test@example.com", password: "secret" },
-  user: { uuid: "u1", name: "Test" },
-  client: { uuid: "c1", name: "Client" },
-  project: { uuid: "p1", name: "Project" },
-  planningEvent: { uuid: "pe1", detail_uuid: "ped1", name: "PE" },
-  workHours: { start: "09:00", end: "17:00" },
-  timestamp: "2025-01-01T00:00:00",
-  token,
-});
+beforeEach(() => vi.clearAllMocks());
 
-const validToken = {
-  access_token: "cached-token",
-  expires_at: DateTime.now().plus({ hours: 1 }).toISO()!,
-};
-
-const makeConfig = (profiles: Record<string, ProfileConfig>): Config => ({ profiles });
-
-const loginResponse = {
-  data: {
-    access_token: "new-token",
-    access_token_expires_at: DateTime.now().plus({ hours: 2 }).toSeconds(),
-  },
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-describe("authenticate", () => {
-  it("returns cached token when not expired", async () => {
-    const profile = makeProfile(validToken);
-    mockedReadConfig.mockResolvedValue(makeConfig({ _default: profile }));
-
-    const token = await authenticate();
-
-    expect(token).toBe("cached-token");
-    expect(mockedApiCall).not.toHaveBeenCalled();
-  });
-
-  it("re-authenticates when token is expired", async () => {
-    const profile = makeProfile({
-      access_token: "cached-token",
-      expires_at: DateTime.now().minus({ hours: 1 }).toISO()!,
-    });
-    mockedReadConfig.mockResolvedValue(makeConfig({ _default: profile }));
-    mockedApiCall.mockResolvedValue(loginResponse);
-
-    const token = await authenticate();
-
-    expect(token).toBe("new-token");
-    expect(mockedApiCall).toHaveBeenCalledWith("https://api2.sloneek.com/auth/login", {
-      method: "POST",
-      data: { email: "test@example.com", password: "secret" },
-    });
-  });
-
-  it("re-authenticates when no token exists", async () => {
-    const profile = makeProfile();
-    mockedReadConfig.mockResolvedValue(makeConfig({ _default: profile }));
-    mockedApiCall.mockResolvedValue(loginResponse);
-
-    const token = await authenticate();
-
-    expect(token).toBe("new-token");
-  });
-
-  it("saves new token to config after login", async () => {
-    const profile = makeProfile();
-    mockedReadConfig.mockResolvedValue(makeConfig({ _default: profile }));
-    mockedApiCall.mockResolvedValue(loginResponse);
-
-    await authenticate();
-
-    expect(mockedWriteConfig).toHaveBeenCalledTimes(1);
-    const savedConfig = mockedWriteConfig.mock.calls[0][0] as Config;
-    expect(savedConfig.profiles._default.token?.access_token).toBe("new-token");
-    expect(savedConfig.profiles._default.token?.expires_at).toBeDefined();
-  });
-
-  it("uses named profile when provided", async () => {
-    const profile = makeProfile(validToken);
-    mockedReadConfig.mockResolvedValue(makeConfig({ work: profile }));
-
+describe("authenticate (CLI wrapper)", () => {
+  it("returns the access token from the session", async () => {
+    mockedEnsure.mockResolvedValue({ accessToken: "abc", profileConfig: {} as ProfileConfig, loginReason: "cache" });
     const token = await authenticate("work");
-
-    expect(token).toBe("cached-token");
+    expect(token).toBe("abc");
+    expect(mockedEnsure).toHaveBeenCalledWith("work");
   });
 
-  it("falls back to _default when named profile does not exist", async () => {
-    const defaultProfile = makeProfile(validToken);
-    mockedReadConfig.mockResolvedValue(makeConfig({ _default: defaultProfile }));
-
-    const token = await authenticate("nonexistent");
-
-    expect(token).toBe("cached-token");
+  it('prints "Using existing token" when loginReason is "cache"', async () => {
+    mockedEnsure.mockResolvedValue({ accessToken: "x", profileConfig: {} as ProfileConfig, loginReason: "cache" });
+    await authenticate();
+    expect(mockedCyan).toHaveBeenCalledWith("Using existing token\n");
+    expect(mockedGreen).not.toHaveBeenCalled();
   });
 
-  it("re-authenticates when token expires within 1 minute", async () => {
-    const profile = makeProfile({
-      access_token: "cached-token",
-      expires_at: DateTime.now().plus({ seconds: 30 }).toISO()!,
+  it('prints expired + success messages when loginReason is "expired"', async () => {
+    mockedEnsure.mockResolvedValue({ accessToken: "x", profileConfig: {} as ProfileConfig, loginReason: "expired" });
+    await authenticate();
+    expect(mockedCyan).toHaveBeenCalledWith("Token expired, logging in again\n");
+    expect(mockedGreen).toHaveBeenCalledWith("✓ Login successful\n");
+  });
+
+  it('prints first-login messages when loginReason is "first_login"', async () => {
+    mockedEnsure.mockResolvedValue({
+      accessToken: "x",
+      profileConfig: {} as ProfileConfig,
+      loginReason: "first_login",
     });
-    mockedReadConfig.mockResolvedValue(makeConfig({ _default: profile }));
-    mockedApiCall.mockResolvedValue(loginResponse);
-
-    const token = await authenticate();
-
-    expect(token).toBe("new-token");
+    await authenticate();
+    expect(mockedCyan).toHaveBeenCalledWith("Logging in...\n");
+    expect(mockedGreen).toHaveBeenCalledWith("✓ Login successful\n");
   });
 });

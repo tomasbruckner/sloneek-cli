@@ -1,45 +1,59 @@
-import { fetchAbsenceOptions, fetchCreateAbsence } from "../utils/api";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
 import { convertDayAndTimeToIso, convertDayToISO, getTodayFormatted } from "../utils/time";
+import { listAbsenceTypes, createAbsence } from "../services/absences";
+import type { CreateAbsenceInput } from "../services/absences";
+
+interface AbsenceInputResolution {
+  input: CreateAbsenceInput;
+  display: {
+    absenceTypeName: string;
+  };
+}
 
 export async function createAbsenceAction(config: ProfileConfig, args?: BaseCommand) {
   const accessToken = await authenticate(args?.profile);
-  const selected = await chooseAbsenceOptions(accessToken);
-  term.green(`✓ Using absence: ${selected.absence_event.display_name}\n\n`);
+  const { input, display } = await resolveAbsenceInput(config, accessToken);
+  term.green(`✓ Using absence: ${display.absenceTypeName}\n\n`);
+  await createAbsence(accessToken, input);
+  term.green("✓ Absence created\n\n");
+}
+
+async function resolveAbsenceInput(config: ProfileConfig, accessToken: string): Promise<AbsenceInputResolution> {
+  const absenceTypes = await listAbsenceTypes(accessToken);
+
+  let selectedType: { uuid: string; name: string; unitType: "hours" | "days_and_half_days" | "days" };
+  if (absenceTypes.length === 1) {
+    selectedType = absenceTypes[0];
+  } else {
+    term.cyan("\nSelect absence:\n");
+    const items = absenceTypes.map((t) => t.name);
+    const selectedItemIndex = await term.gridMenu(items).promise;
+    term("\n");
+    selectedType = absenceTypes[selectedItemIndex.selectedIndex];
+  }
 
   term("Absence message: ");
   const message = (await term.inputField().promise) ?? "";
   term("\n");
 
-  if (selected.absence_event.unit_type === "days") {
-    await chooseFullDayAbsence(accessToken, message, selected);
-  } else if (selected.absence_event.unit_type === "hours") {
-    await chooseHoursAbsence(accessToken, message, selected);
-  } else if (selected.absence_event.unit_type === "days_and_half_days") {
-    await chooseHalfDayAbsence(accessToken, message, selected);
+  let input: CreateAbsenceInput;
+
+  if (selectedType.unitType === "days") {
+    input = await resolveFullDayInput(selectedType.uuid, message);
+  } else if (selectedType.unitType === "hours") {
+    input = await resolveHoursInput(selectedType.uuid, message);
   } else {
-    throw new Error("Unknown type " + selected.absence_event.unit_type);
+    input = await resolveHalfDayInput(selectedType.uuid, message);
   }
 
-  term.green("✓ Absence created\n\n");
+  return {
+    input,
+    display: { absenceTypeName: selectedType.name },
+  };
 }
 
-async function chooseAbsenceOptions(accessToken: string) {
-  const absenceResponse = await fetchAbsenceOptions(accessToken);
-  if (absenceResponse.data.length === 1) {
-    return absenceResponse.data[0];
-  }
-
-  term.cyan("\nSelect absence:\n");
-  const items = absenceResponse.data.map((o) => o.absence_event.display_name);
-  const selectedItemIndex = await term.gridMenu(items).promise;
-  term("\n");
-
-  return absenceResponse.data[selectedItemIndex.selectedIndex];
-}
-
-async function chooseFullDayAbsence(accessToken: string, message: string, option: AbsenceOption) {
+async function resolveFullDayInput(absenceTypeUuid: string, note: string): Promise<CreateAbsenceInput> {
   term.cyan("Do you want absence to be single day or multiple days:\n");
   const selectedItemIndex = await term.singleColumnMenu(["Single day", "Multiple day"]).promise;
   term("\n");
@@ -49,47 +63,37 @@ async function chooseFullDayAbsence(accessToken: string, message: string, option
   term("\n");
 
   if (selectedItemIndex.selectedIndex === 0) {
-    await fetchCreateAbsence(accessToken, {
-      day_type: "full_day",
-      automatically_approve: true,
-      fullDay: true,
-      mentions: [],
-      message: message,
-      note: message,
-      user_absence_event_uuid: option.uuid,
-      start_date_time: convertDayToISO(from),
-      end_date_time: convertDayToISO(from),
-    });
-    return;
+    return {
+      absenceTypeUuid,
+      startIso: convertDayToISO(from),
+      endIso: convertDayToISO(from),
+      note,
+      eventType: "full_day",
+    };
   }
 
   term("End day (example 16.5.2025, default is today): ");
   const to = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
 
-  await fetchCreateAbsence(accessToken, {
-    day_type: "full_day",
-    automatically_approve: true,
-    fullDay: true,
-    mentions: [],
-    message: message,
-    note: message,
-    user_absence_event_uuid: option.uuid,
-    start_date_time: convertDayToISO(from),
-    end_date_time: convertDayToISO(to),
-  });
+  return {
+    absenceTypeUuid,
+    startIso: convertDayToISO(from),
+    endIso: convertDayToISO(to),
+    note,
+    eventType: "full_day",
+  };
 }
 
-async function chooseHalfDayAbsence(accessToken: string, message: string, option: AbsenceOption) {
+async function resolveHalfDayInput(absenceTypeUuid: string, note: string): Promise<CreateAbsenceInput> {
   term.cyan("Select absence half/full day:\n");
   const selectedItemIndex = await term.singleColumnMenu(["Half day", "Full day"]).promise;
   term("\n");
+
   if (selectedItemIndex.selectedIndex === 1) {
-    await chooseFullDayAbsence(accessToken, message, option);
-    return;
+    return resolveFullDayInput(absenceTypeUuid, note);
   }
 
-  term("Select morning/afternoon: ");
   const selectedHalfDay = await term.singleColumnMenu([
     "First half of the day (before lunch)",
     "Second half of the day (after lunch)",
@@ -99,21 +103,18 @@ async function chooseHalfDayAbsence(accessToken: string, message: string, option
   const from = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
 
-  await fetchCreateAbsence(accessToken, {
-    day_type: "half_day",
-    automatically_approve: true,
-    mentions: [],
-    message: message,
-    note: message,
-    fullDay: false,
-    is_first_half_day: selectedHalfDay.selectedIndex === 0,
-    user_absence_event_uuid: option.uuid,
-    start_date_time: convertDayToISO(from),
-    end_date_time: null,
-  });
+  return {
+    absenceTypeUuid,
+    startIso: convertDayToISO(from),
+    endIso: null,
+    note,
+    eventType: "full_day",
+    isHalfDay: true,
+    isFirstHalfDay: selectedHalfDay.selectedIndex === 0,
+  };
 }
 
-async function chooseHoursAbsence(accessToken: string, message: string, option: AbsenceOption) {
+async function resolveHoursInput(absenceTypeUuid: string, note: string): Promise<CreateAbsenceInput> {
   term("Start day (example 16.5.2025, default is today): ");
   const from = (await term.inputField().promise) || getTodayFormatted();
   term("\n");
@@ -126,15 +127,12 @@ async function chooseHoursAbsence(accessToken: string, message: string, option: 
   const duration = (await term.inputField().promise) ?? "";
   term("\n");
 
-  await fetchCreateAbsence(accessToken, {
-    day_type: "half_day",
-    automatically_approve: false,
-    mentions: [],
-    message: message,
-    note: message,
+  return {
+    absenceTypeUuid,
+    startIso: convertDayAndTimeToIso(from, time),
+    endIso: null,
+    note,
+    eventType: "partial_day",
     duration: Number(duration),
-    user_absence_event_uuid: option.uuid,
-    start_date_time: convertDayAndTimeToIso(from, time),
-    end_date_time: null,
-  });
+  };
 }

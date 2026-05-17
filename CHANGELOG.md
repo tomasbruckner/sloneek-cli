@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.15.2] - 2026-05-17
+
+### Changed
+- Extracted profile listing/removal/save into `services/profiles.ts`. `init` now uses `services/clients.ts` (last action file with direct API import is cleaned up). CLI behavior unchanged.
+
+## [1.15.1] - 2026-05-17
+
+### Changed
+- Extracted team project aggregation into `services/team-reports.ts`. CLI behavior unchanged.
+
+## [1.15.0] - 2026-05-17
+
+### Changed
+- Extracted reports logic (events listing, summary, validate) into `services/reports.ts`. CLI behavior unchanged.
+
+## [1.14.5] - 2026-05-17
+
+### Changed
+- Extracted absence create/cancel/listing into `services/absences.ts`. CLI behavior unchanged.
+
+## [1.14.4] - 2026-05-17
+
+### Changed
+- Extracted worklog create/cancel into `services/logs.ts`. CLI behavior unchanged.
+
+## [1.14.3] - 2026-05-17
+
+### Changed
+- Extracted client/project listing into `services/clients.ts`. CLI behavior unchanged.
+
+## [1.14.2] - 2026-05-17
+
+### Changed
+- Extracted event-listing logic into `services/events.ts`. CLI behavior unchanged.
+
+## [1.14.1] - 2026-05-17
+
+### Changed
+- Extracted authentication logic into `services/auth.ts` for reuse between CLI and the upcoming TUI. CLI behavior unchanged.
+
 ## [1.14.0] (2026-04-08)
 
 ### Added
@@ -240,6 +280,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.15.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.15.1...v1.15.2
+[1.15.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.15.0...v1.15.1
+[1.15.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.5...v1.15.0
+[1.14.5]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.4...v1.14.5
+[1.14.4]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.3...v1.14.4
+[1.14.3]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.2...v1.14.3
+[1.14.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.1...v1.14.2
+[1.14.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.13.1...v1.14.0
 [1.13.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.12.0...v1.13.0

@@ -1,7 +1,7 @@
 # TUI Support for sloneek-cli — Design
 
 **Date:** 2026-05-17
-**Status:** Approved
+**Status:** Approved — Plan 1 (services refactor) shipped on 2026-05-17 (`services-refactor` branch, see `docs/superpowers/plans/2026-05-17-services-refactor.md`). Plan 2 (Ink TUI build) pending.
 **Author:** brainstorming session
 
 ## Summary
