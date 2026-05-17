@@ -351,9 +351,9 @@ describe("getValidateReport", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].userName).toBe("Alice Dev");
-    expect(rows[0].missingCount).toBe(4); // May 5, 6, 7, 8
+    expect(rows[0].missingCount).toBe(3); // May 5, 6, 7 (May 8 excluded: isoEnd.startOf("day") is exclusive upper bound)
     expect(rows[0].missingDates).toContain("05.05.2026");
-    expect(rows[0].missingDates).toContain("08.05.2026");
+    expect(rows[0].missingDates).not.toContain("08.05.2026");
     expect(rows[0].missingDates).not.toContain("04.05.2026");
   });
 
@@ -388,8 +388,8 @@ describe("getValidateReport", () => {
 
     const rows = await getValidateReport("tok", smallRange, {}, { ignoreToday: false });
 
-    // Missing: May 6, 7, 8 (not May 5 — holiday)
-    expect(rows[0].missingCount).toBe(3);
+    // Missing: May 6, 7 (not May 5 — holiday; May 8 excluded by exclusive upper bound)
+    expect(rows[0].missingCount).toBe(2);
     expect(rows[0].missingDates).not.toContain("05.05.2026");
     expect(rows[0].missingDates).toContain("06.05.2026");
   });
@@ -418,10 +418,11 @@ describe("getValidateReport", () => {
 
   it("ignoreToday: false includes today in validation window", async () => {
     // Range covers today (2026-05-17, a Sunday = weekend) — but let's use a weekday range
-    // 2026-05-16 is a Saturday, 2026-05-15 is a Friday
+    // 2026-05-15 is a Friday; isoEnd must be at least May 16 so that startOf(isoEnd)=May 16
+    // making cursor < May 16 inclusive of May 15 (original exclusive upper bound semantics)
     const rangeWithFriday: MonthRange = {
       isoStart: "2026-05-15T00:00:00+02:00",
-      isoEnd: "2026-05-15T23:59:59+02:00",
+      isoEnd: "2026-05-16T23:59:59+02:00",
       rangeLabel: "Friday",
     };
 
@@ -478,9 +479,10 @@ describe("getValidateReport", () => {
   });
 
   it("skips in_work absences — in_work type does NOT count as covered", async () => {
+    // isoEnd must be May 5 so startOf(isoEnd)=May 5, making May 4 included (cursor < May 5)
     const smallRange: MonthRange = {
       isoStart: "2026-05-04T00:00:00+02:00",
-      isoEnd: "2026-05-04T23:59:59+02:00",
+      isoEnd: "2026-05-05T23:59:59+02:00",
       rangeLabel: "Day",
     };
 

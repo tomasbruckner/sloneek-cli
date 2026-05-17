@@ -131,30 +131,29 @@ export async function getReport(
   const userTeamMap: Record<string, string> = {};
   for (const u of users) userTeamMap[u.uuid] = u.team;
 
-  const fromDate = DateTime.fromISO(range.isoStart).setZone(TZ).toISODate()!;
-  const toDate = DateTime.fromISO(range.isoEnd).setZone(TZ).toISODate()!;
+  const teamFilters = (filters.teamPrefixes || []).map((s) => s.toLowerCase().trim()).filter((s) => s.length > 0);
+  const nameFilter = (filters.namePrefix || "").toLowerCase().trim();
 
-  const [evResp] = await Promise.all([
-    getEvents(
-      {
-        interval_starting_at: range.isoStart,
-        interval_ending_at: range.isoEnd,
-        users_uuids: usersUuids,
-        quick_filter: null,
-      },
-      accessToken,
-    ),
-    fetchHolidaySet(accessToken, usersUuids, fromDate, toDate), // fire-and-forget but awaited
-  ]);
+  const evResp = await getEvents(
+    {
+      interval_starting_at: range.isoStart,
+      interval_ending_at: range.isoEnd,
+      users_uuids: usersUuids,
+      quick_filter: null,
+    },
+    accessToken,
+  );
 
   let events: any[] = evResp?.data?.events ?? [];
 
-  // Defensive filter if backend returns extra users
-  const allowed = new Set(usersUuids);
-  events = events.filter((e) => {
-    const uid = e.user?.uuid;
-    return !uid || allowed.has(uid);
-  });
+  // Defensive filter if backend returns extra users (only when filters are active — original behavior)
+  if (teamFilters.length > 0 || nameFilter) {
+    const allowed = new Set(usersUuids);
+    events = events.filter((e) => {
+      const uid = e.user?.uuid;
+      return !uid || allowed.has(uid);
+    });
+  }
 
   // Sort by start time
   events.sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
@@ -358,8 +357,8 @@ export async function getValidateReport(
   const todayStart = DateTime.now().setZone(TZ).startOf("day");
   const todayEnd = todayStart.plus({ days: 1 });
   const todayBoundary = opts.ignoreToday ? todayStart : todayEnd;
-  // Use end-of-range as exclusive upper bound: startOf("day") + 1 day to include the last day
-  const rangeEnd = DateTime.fromISO(range.isoEnd).setZone(TZ).startOf("day").plus({ days: 1 });
+  // Use end-of-range as exclusive upper bound: startOf("day") (original behavior, isoEnd day is excluded)
+  const rangeEnd = DateTime.fromISO(range.isoEnd).setZone(TZ).startOf("day");
   const effectiveEnd = rangeEnd < todayBoundary ? rangeEnd : todayBoundary;
 
   // Build list of workdays (Mon-Fri, non-holiday) in effective window
