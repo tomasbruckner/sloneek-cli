@@ -163,7 +163,7 @@ interface EventDetailResponse {
   };
 }
 
-type AbsenceType = "type_in_work" | "type_vacation";
+type AbsenceEventKind = "type_in_work" | "type_vacation";
 
 interface AbsenceOptionsResponse {
   data: AbsenceOption[];
@@ -173,7 +173,7 @@ interface AbsenceOption {
   uuid: string;
   absence_event: {
     display_name: string;
-    type: AbsenceType;
+    type: AbsenceEventKind;
     unit_type: "hours" | "days_and_half_days" | "days";
   };
 }

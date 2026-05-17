@@ -22,7 +22,7 @@ export async function createAbsenceAction(config: ProfileConfig, args?: BaseComm
 async function resolveAbsenceInput(config: ProfileConfig, accessToken: string): Promise<AbsenceInputResolution> {
   const absenceTypes = await listAbsenceTypes(accessToken);
 
-  let selectedType: { uuid: string; name: string; unitType: string };
+  let selectedType: { uuid: string; name: string; unitType: "hours" | "days_and_half_days" | "days" };
   if (absenceTypes.length === 1) {
     selectedType = absenceTypes[0];
   } else {
@@ -43,10 +43,8 @@ async function resolveAbsenceInput(config: ProfileConfig, accessToken: string): 
     input = await resolveFullDayInput(selectedType.uuid, message);
   } else if (selectedType.unitType === "hours") {
     input = await resolveHoursInput(selectedType.uuid, message);
-  } else if (selectedType.unitType === "days_and_half_days") {
-    input = await resolveHalfDayInput(selectedType.uuid, message);
   } else {
-    throw new Error("Unknown unit type " + selectedType.unitType);
+    input = await resolveHalfDayInput(selectedType.uuid, message);
   }
 
   return {

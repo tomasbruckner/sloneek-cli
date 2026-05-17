@@ -4,7 +4,7 @@ import { getTodayToEndOfYear } from "../utils/time";
 export interface AbsenceType {
   uuid: string;
   name: string;
-  unitType: string;
+  unitType: "hours" | "days_and_half_days" | "days";
 }
 
 export interface OwnAbsence {
@@ -41,8 +41,8 @@ export async function listOwnAbsences(
   accessToken: string,
   range?: MonthRange,
 ): Promise<OwnAbsence[]> {
-  const isoStart = range?.isoStart ?? getTodayToEndOfYear().isoStart;
-  const isoEnd = range?.isoEnd ?? getTodayToEndOfYear().isoEnd;
+  const effectiveRange = range ?? getTodayToEndOfYear();
+  const { isoStart, isoEnd } = effectiveRange;
 
   const response = await getAbsences(
     {
