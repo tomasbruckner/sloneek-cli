@@ -1,6 +1,24 @@
 import { DateTime } from "luxon";
-import { apiCall } from "../utils/api";
+import { apiCall, fetchUsers } from "../utils/api";
 import { readConfig, writeConfig } from "../utils/config";
+
+export interface UserSummary {
+  uuid: string;
+  name: string;
+}
+
+export async function loginWithCredentials(email: string, password: string): Promise<LoginInfo> {
+  const loginResponse = await apiCall<LoginResponse>("https://api2.sloneek.com/auth/login", {
+    method: "POST",
+    data: { email, password },
+  });
+  return loginResponse.data;
+}
+
+export async function listUsers(accessToken: string): Promise<UserSummary[]> {
+  const response = await fetchUsers(accessToken);
+  return (response.data || []).map((u) => ({ uuid: u.uuid, name: u.name }));
+}
 
 export async function ensureAuthenticated(profileName?: string): Promise<AuthenticatedSession> {
   const config = await readConfig(true);

@@ -1,14 +1,14 @@
 import { terminal as term } from "terminal-kit";
-import { readConfig, writeConfig } from "../utils/config";
+import { readConfig } from "../utils/config";
+import { listProfiles, removeProfile } from "../services/profiles";
 
 export async function profileAction(profileName?: string, remove: boolean = false): Promise<void> {
   try {
-    const config = await readConfig();
-
     if (profileName && remove) {
+      const config = await readConfig();
       if (config.profiles[profileName]) {
         displayProfileInfo(profileName, config.profiles[profileName]);
-        await handleProfileRemoval(config, profileName);
+        await handleProfileRemoval(profileName);
       } else {
         term.red(`Profile "${profileName}" not found.\n\n`);
       }
@@ -16,7 +16,7 @@ export async function profileAction(profileName?: string, remove: boolean = fals
     }
 
     if (remove) {
-      await handleProfileRemoval(config, profileName);
+      await handleProfileRemoval(profileName);
       return;
     }
 
@@ -25,18 +25,19 @@ export async function profileAction(profileName?: string, remove: boolean = fals
     const headers = ["Profile Name", "Email", "Client", "Project", "From", "To"];
 
     const tableData = [headers];
-    for (const [name, profile] of Object.entries(config.profiles)) {
-      if (profileName && profileName !== name) {
+    const profiles = await listProfiles();
+    for (const profile of profiles) {
+      if (profileName && profileName !== profile.name) {
         continue;
       }
 
       tableData.push([
-        name,
-        profile.credentials.email,
-        profile.client.name,
-        profile.project.name,
-        profile.workHours.start,
-        profile.workHours.end,
+        profile.name,
+        profile.email,
+        profile.clientName,
+        profile.projectName,
+        profile.workHoursStart,
+        profile.workHoursEnd,
       ]);
     }
 
@@ -80,7 +81,8 @@ function displayProfileInfo(name: string, profile: ProfileConfig): void {
   term("\n");
 }
 
-async function handleProfileRemoval(config: Config, profileName?: string): Promise<void> {
+async function handleProfileRemoval(profileName?: string): Promise<void> {
+  const config = await readConfig();
   const profileCount = Object.keys(config.profiles).length;
 
   if (profileCount === 0) {
@@ -109,29 +111,12 @@ async function handleProfileRemoval(config: Config, profileName?: string): Promi
     }
   }
 
-  const newProfiles = { ...config.profiles };
-  delete newProfiles[profileToRemove];
-
-  // If only one profile remains and it's not _default, rename it to _default
-  if (Object.keys(newProfiles).length === 1) {
-    const remainingProfile = Object.keys(newProfiles)[0];
-    if (remainingProfile !== "_default") {
-      newProfiles["_default"] = newProfiles[remainingProfile];
-      delete newProfiles[remainingProfile];
-    }
-  }
-
-  const updatedConfig: Config = {
-    ...config,
-    profiles: newProfiles,
-  };
-
-  await writeConfig(updatedConfig);
+  const { renamedRemainingToDefault } = await removeProfile(profileToRemove);
 
   term.green(`✓ Profile "${profileToRemove}" has been removed.\n`);
 
-  if (Object.keys(newProfiles).length === 1 && "_default" in newProfiles) {
-    term.green(`✓ The remaining profile has been renamed to "_default".\n`);
+  if (renamedRemainingToDefault) {
+    term.cyan(`✓ The remaining profile has been renamed to "_default".\n`);
   }
 
   term("\n");

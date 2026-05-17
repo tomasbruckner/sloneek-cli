@@ -5,8 +5,51 @@ import {
   fetchAbsenceReportCalendarOptions,
   fetchScheduledEventDetail,
   fetchAbsenceDetail,
+  fetchUserEvents,
+  fetchCalendarOptions,
+  fetchCategories,
 } from "../utils/api";
 import { getCurrentDay, getStartDay, isSameDay, isWorkDay } from "../utils/time";
+
+// ─── PlanningEvents ───────────────────────────────────────────────────────────
+
+export interface PlanningEventSummary {
+  uuid: string;
+  planningEventUuid: string;
+  displayName: string;
+}
+
+export async function listPlanningEvents(accessToken: string, userUuid: string): Promise<PlanningEventSummary[]> {
+  const response = await fetchUserEvents(accessToken, userUuid);
+  return (response.data || []).map((item) => ({
+    uuid: item.uuid,
+    planningEventUuid: item.planning_event.uuid,
+    displayName: item.planning_event.display_name,
+  }));
+}
+
+// ─── CalendarOptions ──────────────────────────────────────────────────────────
+
+export interface CalendarUserGroup {
+  teamName: string;
+  users: { uuid?: string; value?: string; fullName?: string; name?: string }[];
+}
+
+export async function listCalendarOptions(accessToken: string): Promise<CalendarOptionsResponse> {
+  return fetchCalendarOptions(accessToken);
+}
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+export interface CategorySummary {
+  uuid: string;
+  name: string;
+}
+
+export async function listCategories(accessToken: string): Promise<CategorySummary[]> {
+  const response = await fetchCategories(accessToken);
+  return (response.data || []).map((c) => ({ uuid: c.uuid, name: c.name }));
+}
 
 // ─── MonthEvents ──────────────────────────────────────────────────────────────
 

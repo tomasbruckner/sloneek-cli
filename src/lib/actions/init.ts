@@ -2,8 +2,11 @@
 
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
-import { fetchCategories, fetchUserEvents, fetchUsers, getClients, login } from "../utils/api";
-import { configExists, readConfig, writeConfig } from "../utils/config";
+import { configExists, readConfig } from "../utils/config";
+import { loginWithCredentials, listUsers } from "../services/auth";
+import { listClients } from "../services/clients";
+import { listPlanningEvents, listCategories } from "../services/events";
+import { saveProfile } from "../services/profiles";
 
 export async function initConfigAction(profileName?: string): Promise<void> {
   try {
@@ -53,32 +56,35 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     const password = (await term.inputField({ echo: false }).promise) ?? "";
     term("\n\n");
 
-    const loginInfo = await login(email, password);
+    const loginInfo = await loginWithCredentials(email, password);
     term.green("✓ Login successful\n\n");
 
     term.cyan("Fetching users...\n");
-    const usersResponse = await fetchUsers(loginInfo.access_token);
+    const users = await listUsers(loginInfo.access_token);
 
     let selectedUserUuid: string;
+    let selectedUserName: string;
 
-    if (usersResponse.data.length === 1) {
-      selectedUserUuid = usersResponse.data[0].uuid;
-      term.green(`✓ Using user: ${usersResponse.data[0].name}\n\n`);
+    if (users.length === 1) {
+      selectedUserUuid = users[0].uuid;
+      selectedUserName = users[0].name;
+      term.green(`✓ Using user: ${users[0].name}\n\n`);
     } else {
       term.cyan("Select user:\n");
-      const userItems = usersResponse.data.map((user) => user.name);
+      const userItems = users.map((user) => user.name);
       const selectedUserIndex = await term.gridMenu(userItems).promise;
-      selectedUserUuid = usersResponse.data[selectedUserIndex.selectedIndex].uuid;
+      selectedUserUuid = users[selectedUserIndex.selectedIndex].uuid;
+      selectedUserName = users[selectedUserIndex.selectedIndex].name;
       term("\n");
     }
 
     term.cyan("Fetching clients...\n");
-    const clientsResponse = await getClients(selectedUserUuid, loginInfo.access_token);
+    const clients = await listClients(loginInfo.access_token, selectedUserUuid);
 
     term.cyan("Choose client:\n");
-    const clientItems = clientsResponse.data.map((client) => client.name);
+    const clientItems = clients.map((client) => client.name);
     const selectedClientIndex = await term.gridMenu(clientItems).promise;
-    const selectedClient = clientsResponse.data[selectedClientIndex.selectedIndex];
+    const selectedClient = clients[selectedClientIndex.selectedIndex];
     term("\n");
 
     term.cyan("Choose project:\n");
@@ -88,28 +94,28 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     term("\n");
 
     term.cyan("Fetching planning events...\n");
-    const planningEventsResponse = await fetchUserEvents(loginInfo.access_token, selectedUserUuid);
+    const planningEvents = await listPlanningEvents(loginInfo.access_token, selectedUserUuid);
 
-    let selectedPlanningEvent;
-    if (planningEventsResponse.data.length === 1) {
-      selectedPlanningEvent = planningEventsResponse.data[0];
-      term.green(`✓ Using planning event: ${selectedPlanningEvent.planning_event.display_name}\n\n`);
+    let selectedPlanningEvent: { uuid: string; planningEventUuid: string; displayName: string };
+    if (planningEvents.length === 1) {
+      selectedPlanningEvent = planningEvents[0];
+      term.green(`✓ Using planning event: ${selectedPlanningEvent.displayName}\n\n`);
     } else {
       term.cyan("Choose planning event:\n");
-      const planningEventItems = planningEventsResponse.data.map((event) => event.planning_event.display_name);
+      const planningEventItems = planningEvents.map((event) => event.displayName);
       const selectedPlanningEventIndex = await term.gridMenu(planningEventItems).promise;
-      selectedPlanningEvent = planningEventsResponse.data[selectedPlanningEventIndex.selectedIndex];
+      selectedPlanningEvent = planningEvents[selectedPlanningEventIndex.selectedIndex];
       term("\n");
-      term.green(`✓ Selected planning event: ${selectedPlanningEvent.planning_event.display_name}\n\n`);
+      term.green(`✓ Selected planning event: ${selectedPlanningEvent.displayName}\n\n`);
     }
 
     term.cyan("Fetching categories...\n");
-    const categoriesResponse = await fetchCategories(loginInfo.access_token);
+    const categories = await listCategories(loginInfo.access_token);
 
     term.cyan("Select categories:\n");
-    const selectedCategories = [];
+    const selectedCategories: { uuid: string; name: string }[] = [];
 
-    for (const category of categoriesResponse.data) {
+    for (const category of categories) {
       term.cyan(`Include category "${category.name}"? (y/n) `);
       const includeCategory = await term.yesOrNo({ yes: ["y", "ENTER"], no: ["n"] }).promise;
 
@@ -147,11 +153,6 @@ export async function initConfigAction(profileName?: string): Promise<void> {
     const endTime = endTimeInput || "16:00";
     term("\n\n");
 
-    const selectedUser = usersResponse.data.find((u) => u.uuid === selectedUserUuid);
-    if (!selectedUser) {
-      throw new Error("Selected user not found");
-    }
-
     const profileConfig: ProfileConfig = {
       credentials: {
         email,
@@ -159,7 +160,7 @@ export async function initConfigAction(profileName?: string): Promise<void> {
       },
       user: {
         uuid: selectedUserUuid,
-        name: selectedUser.name,
+        name: selectedUserName,
       },
       client: {
         uuid: selectedClient.uuid,
@@ -171,8 +172,8 @@ export async function initConfigAction(profileName?: string): Promise<void> {
       },
       planningEvent: {
         uuid: selectedPlanningEvent.uuid,
-        detail_uuid: selectedPlanningEvent.planning_event.uuid,
-        name: selectedPlanningEvent.planning_event.display_name,
+        detail_uuid: selectedPlanningEvent.planningEventUuid,
+        name: selectedPlanningEvent.displayName,
       },
       categories: selectedCategories.length > 0 ? selectedCategories : undefined,
       workHours: {
@@ -186,36 +187,9 @@ export async function initConfigAction(profileName?: string): Promise<void> {
       },
     };
 
-    // Create or update the configuration
-    let config: Config;
-    if (existingConfig && !overwriteDefault) {
-      // Add new profile to existing config
-      config = {
-        ...existingConfig,
-        profiles: {
-          ...existingConfig.profiles,
-          [selectedProfileName]: profileConfig,
-        },
-      };
-    } else if (existingConfig && overwriteDefault) {
-      // Overwrite default profile in existing config
-      config = {
-        ...existingConfig,
-        profiles: {
-          ...existingConfig.profiles,
-          _default: profileConfig,
-        },
-      };
-    } else {
-      // Create new config with default profile
-      config = {
-        profiles: {
-          _default: profileConfig,
-        },
-      };
-    }
-
-    await writeConfig(config);
+    // Determine the profile name to save under, accounting for overwrite logic
+    const nameToSave = overwriteDefault ? "_default" : selectedProfileName;
+    await saveProfile(nameToSave, profileConfig);
 
     term.green("✓ Configuration saved\n\n");
 

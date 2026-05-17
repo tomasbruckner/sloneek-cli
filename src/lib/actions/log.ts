@@ -1,10 +1,10 @@
-import { fetchUserEvents } from "../utils/api";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
 import { calculateDurationMinutes, createDateTimeForSpecificDay, createDateTimeForToday } from "../utils/time";
 import { DateTime } from "luxon";
 import { listClients, type ClientSummary, type ProjectSummary } from "../services/clients";
 import { createLog, type CreateLogInput } from "../services/logs";
+import { listPlanningEvents } from "../services/events";
 
 export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog) {
   const { message, interactiveClient, interactiveProject, interactiveActivity, day, yesterday, profile } = args;
@@ -39,20 +39,20 @@ async function resolveLogInput(
 
   if (interactiveActivity) {
     term.cyan("Fetching activities...\n");
-    const planningEventsResponse = await fetchUserEvents(accessToken, config.user.uuid);
+    const planningEvents = await listPlanningEvents(accessToken, config.user.uuid);
 
-    if (planningEventsResponse.data.length === 1) {
-      const selected = planningEventsResponse.data[0];
+    if (planningEvents.length === 1) {
+      const selected = planningEvents[0];
       planningEventUuid = selected.uuid;
-      activityDisplayName = selected.planning_event.display_name;
+      activityDisplayName = selected.displayName;
       term.green(`✓ Using activity: ${activityDisplayName}\n\n`);
     } else {
       term.cyan("Choose activity:\n");
-      const activityItems = planningEventsResponse.data.map((event) => event.planning_event.display_name);
+      const activityItems = planningEvents.map((event) => event.displayName);
       const selectedIndex = await term.gridMenu(activityItems).promise;
-      const selected = planningEventsResponse.data[selectedIndex.selectedIndex];
+      const selected = planningEvents[selectedIndex.selectedIndex];
       planningEventUuid = selected.uuid;
-      activityDisplayName = selected.planning_event.display_name;
+      activityDisplayName = selected.displayName;
       term("\n");
     }
   }
