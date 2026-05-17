@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.14.3] - 2026-05-17
+
+### Changed
+- Extracted client/project listing into `services/clients.ts`. CLI behavior unchanged.
+
 ## [1.14.2] - 2026-05-17
 
 ### Changed
@@ -250,6 +255,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 Initial release.
 
 <!-- markdown reference links -->
+[1.14.3]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.2...v1.14.3
 [1.14.2]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.1...v1.14.2
 [1.14.1]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/tomasbruckner/sloneek-cli/compare/v1.13.1...v1.14.0

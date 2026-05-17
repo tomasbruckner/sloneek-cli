@@ -1,8 +1,9 @@
 import { DateTime } from "luxon";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
-import { fetchCalendarOptions, getEvents, getClients } from "../utils/api";
+import { fetchCalendarOptions, getEvents } from "../utils/api";
 import { calculateDurationMinutes, getMonthRangePrague, resolveCalendarUserId } from "../utils/time";
+import { listClients, type ClientSummary } from "../services/clients";
 
 export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsTeamReport): Promise<void> {
   const accessToken = await authenticate(args.profile);
@@ -21,15 +22,14 @@ export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsT
 
   // Resolve client selection if missing or ambiguous
   let clientNameFilter = (args.client || "").trim();
-  let selectedClient: Client | null = null;
+  let selectedClient: ClientSummary | null = null;
 
   // If client not provided, fetch and let user choose one
-  const clientsResp = await getClients(_config.user.uuid, accessToken);
-  const clients = clientsResp.data || [];
+  const clients = await listClients(accessToken, _config.user.uuid);
 
-  const matchClients = (needle: string): Client[] => {
+  const matchClients = (needle: string): ClientSummary[] => {
     const n = needle.toLowerCase();
-    return clients.filter((c: any) => (c.name || "").toLowerCase().includes(n));
+    return clients.filter((c) => (c.name || "").toLowerCase().includes(n));
   };
 
   if (clientNameFilter) {
@@ -45,7 +45,7 @@ export async function teamReportAction(_config: ProfileConfig, args: ParsedArgsT
   }
 
   if (!selectedClient) {
-    const idx = await pickFromList("Select a client:", clients.map((c: any) => c.name));
+    const idx = await pickFromList("Select a client:", clients.map((c) => c.name));
     selectedClient = clients[idx];
   }
 
