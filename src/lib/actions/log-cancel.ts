@@ -1,28 +1,22 @@
 import { terminal as term } from "terminal-kit";
-import { fetchCancelWorklog, getEvents } from "../utils/api";
 import { authenticate } from "../utils/login";
-import { getCurrentMonth } from "../utils/time";
+import { getMonthRangePrague } from "../utils/time";
 import { DateTime } from "luxon";
+import { getMonthEvents } from "../services/events";
+import { cancelLog } from "../services/logs";
 
 export async function logCancelAction(config: ProfileConfig, args?: BaseCommand) {
   const accessToken = await authenticate(args?.profile);
 
   // Get the first and last day of the current month
-  const { isoStart, isoEnd } = getCurrentMonth();
+  const { isoStart, isoEnd, label } = getMonthRangePrague();
+  const range: MonthRange = { isoStart, isoEnd, rangeLabel: label };
 
-  const eventsResponse = await getEvents(
-    {
-      interval_starting_at: isoStart,
-      interval_ending_at: isoEnd,
-      users_uuids: [config.user.uuid],
-      quick_filter: null,
-    },
-    accessToken,
-  );
+  const { scheduledEvents } = await getMonthEvents(config, accessToken, range);
 
-  const worklogs = (eventsResponse.data?.events || []).sort(
-    (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
-  );
+  const worklogs = scheduledEvents
+    .slice()
+    .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
 
   if (worklogs.length === 0) {
     term.green("\nYou don't have any worklogs for the current month to cancel.\n\n");
@@ -40,7 +34,7 @@ export async function logCancelAction(config: ProfileConfig, args?: BaseCommand)
 
     const clientName = worklog.client?.name || "No client";
     const projectName = worklog.client_project?.project_name || "No project";
-    const message = worklog.message || "";
+    const message = (worklog as any).message || "";
 
     return `${startFormatted} - ${endFormatted} | ${clientName} | ${projectName} | ${message}`;
   });
@@ -59,7 +53,7 @@ export async function logCancelAction(config: ProfileConfig, args?: BaseCommand)
     return;
   }
 
-  await fetchCancelWorklog(accessToken, selectedWorklog.uuid);
+  await cancelLog(accessToken, (selectedWorklog as any).uuid);
 
   term.green("✓ Worklog cancelled successfully\n\n");
 }

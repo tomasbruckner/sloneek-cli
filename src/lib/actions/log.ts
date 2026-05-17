@@ -1,14 +1,43 @@
-import { createEvent, fetchUserEvents } from "../utils/api";
+import { fetchUserEvents } from "../utils/api";
 import { terminal as term } from "terminal-kit";
 import { authenticate } from "../utils/login";
 import { calculateDurationMinutes, createDateTimeForSpecificDay, createDateTimeForToday } from "../utils/time";
 import { DateTime } from "luxon";
 import { listClients, type ClientSummary, type ProjectSummary } from "../services/clients";
+import { createLog, type CreateLogInput } from "../services/logs";
 
 export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog) {
   const { message, interactiveClient, interactiveProject, interactiveActivity, day, yesterday, profile } = args;
 
   const accessToken = await authenticate(profile);
+  const input = await resolveLogInput(config, args, accessToken);
+
+  term.cyan("Creating event...\n");
+  term.cyan(`User: ${config.user.name}\n`);
+  term.cyan(`Activity: ${input._activityDisplayName}\n`);
+  term.cyan(`Client: ${input._clientDisplayName}\n`);
+  term.cyan(`Project: ${input._projectDisplayName}\n`);
+  term.cyan(`Time: ${args.from || config.workHours.start} - ${args.to || config.workHours.end} (${input.durationMinutes} minutes)\n`);
+  term.cyan(`Date: ${DateTime.fromISO(input.startIso).toFormat("yyyy-MM-dd")}\n`);
+  term.cyan(`Message: ${message ?? ""}\n\n`);
+
+  await createLog(accessToken, input);
+
+  term.green("✓ Event created successfully!");
+}
+
+interface ResolvedLogInput extends CreateLogInput {
+  _activityDisplayName: string;
+  _clientDisplayName: string;
+  _projectDisplayName: string;
+}
+
+async function resolveLogInput(
+  config: ProfileConfig,
+  args: ParsedArgsLog,
+  accessToken: string,
+): Promise<ResolvedLogInput> {
+  const { message, interactiveClient, interactiveProject, interactiveActivity, day, yesterday } = args;
 
   let clientUuid: string, clientDisplayName: string, projectUuid: string, projectDisplayName: string;
   let planningEventUuid = config.planningEvent.uuid;
@@ -76,49 +105,32 @@ export async function createLogAction(config: ProfileConfig, args: ParsedArgsLog
     throw new Error("End time must be after start time");
   }
 
-  const duration = calculateDurationMinutes(startDateTime, endDateTime);
+  const durationMinutes = calculateDurationMinutes(startDateTime, endDateTime);
 
   // Use the same date as startDateTime for duration_time calculation
   const durationTime = startDateTime
     .startOf("day")
     .minus({ days: 1 })
-    .plus({ hours: Math.floor(duration / 60), minutes: duration % 60 })
-    .toISO({ suppressMilliseconds: true });
+    .plus({ hours: Math.floor(durationMinutes / 60), minutes: durationMinutes % 60 })
+    .toISO({ suppressMilliseconds: true })!;
 
-  term.cyan("Creating event...\n");
-  term.cyan(`User: ${config.user.name}\n`);
-  term.cyan(`Activity: ${activityDisplayName}\n`);
-  term.cyan(`Client: ${clientDisplayName}\n`);
-  term.cyan(`Project: ${projectDisplayName}\n`);
-  term.cyan(`Time: ${startTime} - ${endTime} (${duration} minutes)\n`);
-  term.cyan(`Date: ${startDateTime.toFormat("yyyy-MM-dd")}\n`);
-  term.cyan(`Message: ${message ?? ""}\n\n`);
-
-  await createEvent(
-    {
-      isRepeat: false,
-      user_planning_event_uuid: planningEventUuid,
-      planning_categories: config.categories ? config.categories.map((category) => category.uuid) : [],
-      started_at: startDateTime.toISO({ suppressMilliseconds: true })!,
-      ended_at: endDateTime.toISO({ suppressMilliseconds: true })!,
-      start_time: startDateTime.toFormat("HH:mm:ssZZ"),
-      end_time: endDateTime.toFormat("HH:mm:ssZZ"),
-      days: [],
-      duration_time: durationTime!,
-      duration: duration,
-      timezone: startDateTime.toISO({ suppressMilliseconds: true })!,
-      note: message ?? "",
-      is_automatically_approve: false,
-      message: message ?? "",
-      mentions: [],
-      client: clientUuid,
-      client_project: projectUuid,
-      user_uuid: config.user.uuid,
-    },
-    accessToken,
-  );
-
-  term.green("✓ Event created successfully!");
+  return {
+    clientUuid,
+    projectUuid,
+    planningEventUuid,
+    userUuid: config.user.uuid,
+    categories: config.categories ? config.categories.map((category) => category.uuid) : [],
+    startIso: startDateTime.toISO({ suppressMilliseconds: true })!,
+    endIso: endDateTime.toISO({ suppressMilliseconds: true })!,
+    startTime: startDateTime.toFormat("HH:mm:ssZZ"),
+    endTime: endDateTime.toFormat("HH:mm:ssZZ"),
+    durationMinutes,
+    durationTime,
+    note: message ?? "",
+    _activityDisplayName: activityDisplayName,
+    _clientDisplayName: clientDisplayName,
+    _projectDisplayName: projectDisplayName,
+  };
 }
 
 async function interactiveClientProjectSelection(
