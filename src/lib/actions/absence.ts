@@ -22,7 +22,7 @@ export async function createAbsenceAction(config: ProfileConfig, args?: BaseComm
 async function resolveAbsenceInput(config: ProfileConfig, accessToken: string): Promise<AbsenceInputResolution> {
   const absenceTypes = await listAbsenceTypes(accessToken);
 
-  let selectedType: { uuid: string; name: string };
+  let selectedType: { uuid: string; name: string; unitType: string };
   if (absenceTypes.length === 1) {
     selectedType = absenceTypes[0];
   } else {
@@ -37,24 +37,16 @@ async function resolveAbsenceInput(config: ProfileConfig, accessToken: string): 
   const message = (await term.inputField().promise) ?? "";
   term("\n");
 
-  // Determine the unit_type by re-fetching options (we need the original unit_type info).
-  // To avoid another API call, we need to know the unit_type.
-  // We resolve it by fetching the full absence options from the original API response.
-  const { fetchAbsenceOptions } = await import("../utils/api");
-  const absenceResponse = await fetchAbsenceOptions(accessToken);
-  const selectedOption = absenceResponse.data.find((o) => o.uuid === selectedType.uuid)!;
-  const unitType = selectedOption.absence_event.unit_type;
-
   let input: CreateAbsenceInput;
 
-  if (unitType === "days") {
+  if (selectedType.unitType === "days") {
     input = await resolveFullDayInput(selectedType.uuid, message);
-  } else if (unitType === "hours") {
+  } else if (selectedType.unitType === "hours") {
     input = await resolveHoursInput(selectedType.uuid, message);
-  } else if (unitType === "days_and_half_days") {
+  } else if (selectedType.unitType === "days_and_half_days") {
     input = await resolveHalfDayInput(selectedType.uuid, message);
   } else {
-    throw new Error("Unknown unit type " + unitType);
+    throw new Error("Unknown unit type " + selectedType.unitType);
   }
 
   return {

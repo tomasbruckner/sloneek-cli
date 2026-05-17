@@ -82,14 +82,14 @@ const profileConfig: ProfileConfig = {
 describe("listAbsenceTypes", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns flat [{uuid, name}] array from fetchAbsenceOptions response", async () => {
+  it("returns flat [{uuid, name, unitType}] array from fetchAbsenceOptions response", async () => {
     mockedFetchAbsenceOptions.mockResolvedValue(absenceOptionsFixture as any);
     const result = await listAbsenceTypes("tok");
     expect(mockedFetchAbsenceOptions).toHaveBeenCalledWith("tok");
     expect(result).toEqual([
-      { uuid: "opt-1", name: "Vacation" },
-      { uuid: "opt-2", name: "Sick leave" },
-      { uuid: "opt-3", name: "Half-day" },
+      { uuid: "opt-1", name: "Vacation", unitType: "days" },
+      { uuid: "opt-2", name: "Sick leave", unitType: "hours" },
+      { uuid: "opt-3", name: "Half-day", unitType: "days_and_half_days" },
     ]);
   });
 
@@ -160,6 +160,38 @@ describe("createAbsence", () => {
       mentions: [],
       start_date_time: "2026-05-10T09:00:00+02:00",
       duration: 4,
+    });
+  });
+
+  it("calls fetchCreateAbsence with the right half_day payload when isHalfDay is true", async () => {
+    mockedFetchCreateAbsence.mockResolvedValue(undefined as any);
+
+    const input: CreateAbsenceInput = {
+      absenceTypeUuid: "opt-3",
+      startIso: "2026-05-10T00:00:00+02:00",
+      endIso: null,
+      note: "Half day off",
+      eventType: "full_day",
+      isHalfDay: true,
+      isFirstHalfDay: true,
+    };
+
+    await expect(createAbsence("tok", input)).resolves.toBeUndefined();
+
+    expect(mockedFetchCreateAbsence).toHaveBeenCalledTimes(1);
+    const [token, payload] = mockedFetchCreateAbsence.mock.calls[0];
+    expect(token).toBe("tok");
+    expect(payload).toMatchObject({
+      user_absence_event_uuid: "opt-3",
+      day_type: "half_day",
+      automatically_approve: true,
+      fullDay: false,
+      is_first_half_day: true,
+      note: "Half day off",
+      message: "Half day off",
+      mentions: [],
+      start_date_time: "2026-05-10T00:00:00+02:00",
+      end_date_time: null,
     });
   });
 

@@ -4,6 +4,7 @@ import { getTodayToEndOfYear } from "../utils/time";
 export interface AbsenceType {
   uuid: string;
   name: string;
+  unitType: string;
 }
 
 export interface OwnAbsence {
@@ -31,6 +32,7 @@ export async function listAbsenceTypes(accessToken: string): Promise<AbsenceType
   return response.data.map((option) => ({
     uuid: option.uuid,
     name: option.absence_event.display_name,
+    unitType: option.absence_event.unit_type,
   }));
 }
 
