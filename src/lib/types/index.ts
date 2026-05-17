@@ -411,3 +411,18 @@ interface Config {
     [key: string]: ProfileConfig;
   };
 }
+
+interface AuthenticatedSession {
+  accessToken: string;
+  profileConfig: ProfileConfig;
+}
+
+interface ProgressCallback {
+  (done: number, total: number): void;
+}
+
+interface MonthRange {
+  isoStart: string;
+  isoEnd: string;
+  rangeLabel: string;
+}
