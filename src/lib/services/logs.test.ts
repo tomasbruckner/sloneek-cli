@@ -32,7 +32,7 @@ describe("createLog", () => {
 
   it("calls createEvent with the right payload shape", async () => {
     mockedCreateEvent.mockResolvedValue(undefined as any);
-    await createLog("tok", baseInput);
+    await expect(createLog("tok", baseInput)).resolves.toBeUndefined();
 
     expect(mockedCreateEvent).toHaveBeenCalledTimes(1);
     const [payload, token] = mockedCreateEvent.mock.calls[0];

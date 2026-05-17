@@ -15,11 +15,7 @@ export interface CreateLogInput {
   note: string;
 }
 
-export interface CreatedLog {
-  uuid: string;
-}
-
-export async function createLog(accessToken: string, input: CreateLogInput): Promise<CreatedLog> {
+export async function createLog(accessToken: string, input: CreateLogInput): Promise<void> {
   await createEvent(
     {
       isRepeat: false,
@@ -43,8 +39,6 @@ export async function createLog(accessToken: string, input: CreateLogInput): Pro
     },
     accessToken,
   );
-
-  return { uuid: "" };
 }
 
 export async function cancelLog(accessToken: string, worklogUuid: string): Promise<void> {
