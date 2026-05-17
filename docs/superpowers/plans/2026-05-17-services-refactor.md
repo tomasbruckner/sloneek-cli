@@ -1,5 +1,7 @@
 # Services Refactor Implementation Plan (Plan 1 of 2)
 
+**Status: COMPLETED 2026-05-17.** Branch `services-refactor`, merged to `main`. Final state: 8 service modules, 168 tests green, zero `terminal-kit`/`process.exit`/`console.log` in services, zero `../utils/api` imports in actions. Version 1.14.0 → 1.15.2 (8 patch bumps + 1 minor for the largest task).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Extract all API + data-shaping logic from `src/lib/actions/*.ts` into a new `src/lib/services/*.ts` layer with unit tests. CLI behavior, flags, output, and exit codes remain unchanged.
